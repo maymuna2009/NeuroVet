@@ -1,98 +1,179 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+// Returns today's date as a string like "2026-04-23"
+function todayString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+// Returns yesterday's date string
+function yesterdayString(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split('T')[0];
+}
+
+// Returns "Good morning", "Good afternoon", or "Good evening"
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [streak, setStreak] = useState(0);
+  const [completedToday, setCompletedToday] = useState(false);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // Load saved data when app opens
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
+    const savedStreak = await AsyncStorage.getItem('streak');
+    const lastDate = await AsyncStorage.getItem('lastExerciseDate');
+    const today = todayString();
+    const yesterday = yesterdayString();
+
+    if (lastDate === today) {
+      // Already exercised today
+      setStreak(Number(savedStreak) || 0);
+      setCompletedToday(true);
+    } else if (lastDate === yesterday) {
+      // Exercised yesterday — streak still alive, not done today yet
+      setStreak(Number(savedStreak) || 0);
+      setCompletedToday(false);
+    } else {
+      // Missed a day or first launch — reset streak
+      setStreak(0);
+      setCompletedToday(false);
+      await AsyncStorage.setItem('streak', '0');
+    }
+  }
+
+  async function markDoneToday() {
+    if (completedToday) return; // prevent double-counting
+    const newStreak = streak + 1;
+    await AsyncStorage.setItem('streak', String(newStreak));
+    await AsyncStorage.setItem('lastExerciseDate', todayString());
+    setStreak(newStreak);
+    setCompletedToday(true);
+  }
+
+  return (
+    <View style={styles.container}>
+
+      {/* Greeting */}
+      <Text style={styles.greeting}>{greeting()}, Veteran</Text>
+      <Text style={styles.date}>{new Date().toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric'
+      })}</Text>
+
+      {/* Streak card */}
+      <View style={styles.streakCard}>
+        <Text style={styles.streakNumber}>{streak}</Text>
+        <Text style={styles.streakLabel}>Day Streak</Text>
+        {streak >= 7 && <Text style={styles.badge}>🔥 One week strong</Text>}
+        {streak >= 30 && <Text style={styles.badge}>⭐ 30-day milestone</Text>}
+      </View>
+
+      {/* Today's status */}
+      <View style={[styles.statusCard, completedToday ? styles.statusDone : styles.statusPending]}>
+        <Text style={styles.statusText}>
+          {completedToday ? '✓ Exercises done today' : 'Exercises not done yet today'}
+        </Text>
+      </View>
+
+      {/* Start button */}
+      <TouchableOpacity
+        style={[styles.startButton, completedToday && styles.startButtonDone]}
+        onPress={markDoneToday}
+        disabled={completedToday}
+      >
+        <Text style={styles.startButtonText}>
+          {completedToday ? 'Come back tomorrow' : "Start Today's Exercises"}
+        </Text>
+      </TouchableOpacity>
+
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    flex: 1,
+    backgroundColor: '#0a1628',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    padding: 24,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  greeting: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  date: {
+    fontSize: 15,
+    color: '#7eb8a4',
+    marginTop: 6,
+    marginBottom: 40,
+  },
+  streakCard: {
+    backgroundColor: '#1a2e4a',
+    borderRadius: 20,
+    padding: 40,
+    alignItems: 'center',
+    marginBottom: 20,
+    width: '75%',
+    borderWidth: 1,
+    borderColor: '#2a4a6a',
+  },
+  streakNumber: {
+    fontSize: 72,
+    fontWeight: 'bold',
+    color: '#7eb8a4',
+  },
+  streakLabel: {
+    fontSize: 18,
+    color: '#8899aa',
+    marginTop: 6,
+  },
+  badge: {
+    fontSize: 13,
+    color: '#7eb8a4',
+    marginTop: 10,
+  },
+  statusCard: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    marginBottom: 32,
+  },
+  statusDone: {
+    backgroundColor: '#1a3a2a',
+  },
+  statusPending: {
+    backgroundColor: '#2a1a1a',
+  },
+  statusText: {
+    fontSize: 15,
+    color: '#ccddcc',
+    fontWeight: '600',
+  },
+  startButton: {
+    backgroundColor: '#7eb8a4',
+    paddingVertical: 18,
+    paddingHorizontal: 40,
+    borderRadius: 14,
+  },
+  startButtonDone: {
+    backgroundColor: '#2a4a3a',
+  },
+  startButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0a1628',
   },
 });
