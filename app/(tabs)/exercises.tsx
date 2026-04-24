@@ -1,252 +1,102 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet, Dimensions,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 
-const GRID_SIZE = 4;             // 4x4 grid
-const TILE_COUNT = GRID_SIZE * GRID_SIZE; // 16 tiles
-const HIGHLIGHT_MS = 700;        // how long each tile stays lit
-const GAP_MS = 300;              // pause between highlights
-const FEEDBACK_MS = 800;         // how long "Correct!" shows
-
-type Phase = 'idle' | 'showing' | 'input' | 'feedback_correct' | 'result';
-
-// Pick `length` unique random tile indices from 0–15
-function randomSequence(length: number): number[] {
-  const all = Array.from({ length: TILE_COUNT }, (_, i) => i);
-  const shuffled = all.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, length);
-}
+const EXERCISES = [
+  {
+    route: '/exercises/memory-grid',
+    name: 'Memory Grid',
+    tag: 'Corsi Block Test',
+    skill: 'Working Memory',
+    description: 'Watch a sequence of tiles flash, then tap them back in order. Gets harder as you improve.',
+    color: '#7eb8a4',
+  },
+  {
+    route: '/exercises/focus-filter',
+    name: 'Focus Filter',
+    tag: 'Continuous Performance Test',
+    skill: 'Sustained Attention',
+    description: 'A target letter flashes on screen. Tap only when you see it. 60-second session.',
+    color: '#8aabcc',
+  },
+  {
+    route: '/exercises/speed-match',
+    name: 'Speed Match',
+    tag: 'Symbol Digit Modalities Test',
+    skill: 'Processing Speed',
+    description: 'Match symbols to digits as fast as possible. The cognitive domain most affected by TBI blast injuries.',
+    color: '#c8a87e',
+  },
+];
 
 export default function ExercisesScreen() {
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [level, setLevel] = useState(3);           // sequence length
-  const [sequence, setSequence] = useState<number[]>([]);
-  const [userTaps, setUserTaps] = useState<number[]>([]);
-  const [litTile, setLitTile] = useState<number | null>(null);
-  const [score, setScore] = useState(0);           // best level reached this game
-  const [bestScore, setBestScore] = useState(0);   // all-time best
-
-  // Load all-time best score on mount
-  useEffect(() => {
-    AsyncStorage.getItem('memoryGridBest').then(val => {
-      if (val) setBestScore(Number(val));
-    });
-  }, []);
-
-  // Flash the sequence one tile at a time
-  function showSequence(seq: number[]) {
-    setPhase('showing');
-    setUserTaps([]);
-
-    seq.forEach((tileIndex, i) => {
-      const onTime = i * (HIGHLIGHT_MS + GAP_MS);
-      const offTime = onTime + HIGHLIGHT_MS;
-
-      setTimeout(() => setLitTile(tileIndex), onTime);
-      setTimeout(() => setLitTile(null), offTime);
-    });
-
-    // After all tiles shown, let user tap
-    const totalTime = seq.length * (HIGHLIGHT_MS + GAP_MS);
-    setTimeout(() => setPhase('input'), totalTime);
-  }
-
-  function startGame() {
-    setLevel(3);
-    setScore(0);
-    const seq = randomSequence(3);
-    setSequence(seq);
-    showSequence(seq);
-  }
-
-  function handleTileTap(tileIndex: number) {
-    if (phase !== 'input') return;
-
-    const newTaps = [...userTaps, tileIndex];
-    setUserTaps(newTaps);
-
-    const position = newTaps.length - 1;
-
-    // Wrong tile tapped
-    if (newTaps[position] !== sequence[position]) {
-      endGame(level - 1); // score = last successfully completed level
-      return;
-    }
-
-    // Correct so far — check if sequence is complete
-    if (newTaps.length === sequence.length) {
-      const newLevel = level + 1;
-      setLevel(newLevel);
-      setScore(newLevel - 1);
-      setPhase('feedback_correct');
-
-      // Brief pause then show next (longer) sequence
-      setTimeout(() => {
-        const newSeq = randomSequence(newLevel);
-        setSequence(newSeq);
-        showSequence(newSeq);
-      }, FEEDBACK_MS);
-    }
-  }
-
-  async function endGame(finalScore: number) {
-    setPhase('result');
-    setScore(finalScore);
-    setLitTile(null);
-
-    if (finalScore > bestScore) {
-      setBestScore(finalScore);
-      await AsyncStorage.setItem('memoryGridBest', String(finalScore));
-    }
-    await AsyncStorage.setItem('memoryGridLast', String(finalScore));
-  }
-
-  function getTileStyle(index: number) {
-    const isLit = litTile === index;
-    const isTapped = userTaps.includes(index) && phase === 'input';
-    if (isLit) return [styles.tile, styles.tileLit];
-    if (isTapped) return [styles.tile, styles.tileTapped];
-    return [styles.tile];
-  }
+  const router = useRouter();
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Exercises</Text>
+      <Text style={styles.subtitle}>Daily brain training · 5 min total</Text>
 
-      <Text style={styles.title}>Memory Grid</Text>
-      <Text style={styles.subtitle}>Corsi Block Test · Working Memory</Text>
-
-      {/* Score row */}
-      <View style={styles.scoreRow}>
-        <View style={styles.scoreBox}>
-          <Text style={styles.scoreNum}>{score}</Text>
-          <Text style={styles.scoreLabel}>This game</Text>
-        </View>
-        <View style={styles.scoreBox}>
-          <Text style={styles.scoreNum}>{bestScore}</Text>
-          <Text style={styles.scoreLabel}>Best ever</Text>
-        </View>
-      </View>
-
-      {/* Status message */}
-      <Text style={styles.status}>
-        {phase === 'idle' && 'Watch the sequence, then repeat it'}
-        {phase === 'showing' && `Watch — sequence length ${level}`}
-        {phase === 'input' && `Your turn — tap ${sequence.length} tiles`}
-        {phase === 'feedback_correct' && '✓ Correct! Next round...'}
-        {phase === 'result' && `Game over — memory span: ${score}`}
-      </Text>
-
-      {/* 4×4 Grid */}
-      <View style={styles.grid}>
-        {Array.from({ length: TILE_COUNT }, (_, i) => (
-          <TouchableOpacity
-            key={i}
-            style={getTileStyle(i)}
-            onPress={() => handleTileTap(i)}
-            activeOpacity={0.7}
-          />
-        ))}
-      </View>
-
-      {/* Start / Play again button */}
-      {(phase === 'idle' || phase === 'result') && (
-        <TouchableOpacity style={styles.startButton} onPress={startGame}>
-          <Text style={styles.startButtonText}>
-            {phase === 'idle' ? 'Start' : 'Play Again'}
-          </Text>
+      {EXERCISES.map(ex => (
+        <TouchableOpacity
+          key={ex.route}
+          style={styles.card}
+          onPress={() => router.push(ex.route as any)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={styles.cardName}>{ex.name}</Text>
+              <Text style={styles.cardTag}>{ex.tag}</Text>
+            </View>
+            <View style={[styles.skillBadge, { borderColor: ex.color }]}>
+              <Text style={[styles.skillText, { color: ex.color }]}>{ex.skill}</Text>
+            </View>
+          </View>
+          <Text style={styles.cardDesc}>{ex.description}</Text>
+          <Text style={[styles.cardArrow, { color: ex.color }]}>Start →</Text>
         </TouchableOpacity>
-      )}
+      ))}
 
-    </View>
+      <View style={styles.infoCard}>
+        <Text style={styles.infoTitle}>Why these exercises?</Text>
+        <Text style={styles.infoText}>
+          Both tests are used in VA clinical settings to assess TBI-related cognitive symptoms.
+          Regular practice builds memory span and attention endurance.
+        </Text>
+      </View>
+    </ScrollView>
   );
 }
 
-const { width } = Dimensions.get('window');
-const GRID_WIDTH = Math.min(width - 48, 340);
-const TILE_SIZE = (GRID_WIDTH - 12) / GRID_SIZE; // 3px gap each side
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0a1628',
-    alignItems: 'center',
-    paddingTop: 64,
-    padding: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#7eb8a4',
-    marginTop: 6,
-    marginBottom: 24,
-  },
-  scoreRow: {
-    flexDirection: 'row',
-    gap: 24,
-    marginBottom: 20,
-  },
-  scoreBox: {
+  scroll: { flex: 1, backgroundColor: '#0a1628' },
+  container: { padding: 24, paddingTop: 64, paddingBottom: 40 },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#ffffff' },
+  subtitle: { fontSize: 14, color: '#7eb8a4', marginTop: 6, marginBottom: 32 },
+  card: {
     backgroundColor: '#1a2e4a',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    minWidth: 90,
-  },
-  scoreNum: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#7eb8a4',
-  },
-  scoreLabel: {
-    fontSize: 12,
-    color: '#8899aa',
-    marginTop: 4,
-  },
-  status: {
-    fontSize: 15,
-    color: '#ccddcc',
-    marginBottom: 24,
-    textAlign: 'center',
-    minHeight: 22,
-  },
-  grid: {
-    width: GRID_WIDTH,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  tile: {
-    width: TILE_SIZE - 8,
-    height: TILE_SIZE - 8,
-    backgroundColor: '#1a2e4a',
-    borderRadius: 10,
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#2a4a6a',
   },
-  tileLit: {
-    backgroundColor: '#7eb8a4',
-    borderColor: '#9ed8c4',
-  },
-  tileTapped: {
-    backgroundColor: '#2a5a8a',
-    borderColor: '#4a8aba',
-  },
-  startButton: {
-    marginTop: 32,
-    backgroundColor: '#7eb8a4',
-    paddingVertical: 16,
-    paddingHorizontal: 48,
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  cardName: { fontSize: 20, fontWeight: 'bold', color: '#ffffff' },
+  cardTag: { fontSize: 12, color: '#8899aa', marginTop: 3 },
+  skillBadge: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  skillText: { fontSize: 12, fontWeight: '600' },
+  cardDesc: { fontSize: 14, color: '#aabbcc', lineHeight: 20, marginBottom: 16 },
+  cardArrow: { fontSize: 15, fontWeight: 'bold' },
+  infoCard: {
+    backgroundColor: '#0d1f35',
     borderRadius: 14,
+    padding: 18,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#1a2e4a',
   },
-  startButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0a1628',
-  },
+  infoTitle: { fontSize: 14, fontWeight: 'bold', color: '#7eb8a4', marginBottom: 8 },
+  infoText: { fontSize: 13, color: '#667788', lineHeight: 20 },
 });
