@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -105,6 +105,56 @@ export default function ProgressScreen() {
       loadAll();
     }, [])
   );
+
+  async function exportData() {
+    const { memoryHistory, focusHistory, speedHistory, checkinHistory, streak } = stats;
+
+    if (memoryHistory.length === 0 && focusHistory.length === 0 && speedHistory.length === 0) {
+      Alert.alert('No data yet', 'Complete some exercises first before exporting.');
+      return;
+    }
+
+    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const checkinScores = checkinHistory.map(e => e.score);
+    const checkinDates = checkinHistory.map(e => e.date);
+
+    const lines = [
+      `NeuroVet — Data Export`,
+      `Generated: ${date}`,
+      ``,
+      `--- EXERCISE SCORES ---`,
+      `Memory Grid (working memory span):`,
+      `  Sessions: ${memoryHistory.join(', ') || 'none'}`,
+      `  Best: ${Math.max(...memoryHistory, 0)}`,
+      ``,
+      `Focus Filter (attention accuracy %):`,
+      `  Sessions: ${focusHistory.map(v => v + '%').join(', ') || 'none'}`,
+      `  Best: ${Math.max(...focusHistory, 0)}%`,
+      ``,
+      `Speed Match (correct answers in 60s):`,
+      `  Sessions: ${speedHistory.join(', ') || 'none'}`,
+      `  Best: ${Math.max(...speedHistory, 0)}`,
+      ``,
+      `--- WEEKLY CHECK-IN (CFQ score /40, lower = fewer symptoms) ---`,
+      checkinScores.length > 0
+        ? checkinDates.map((d, i) => `  ${d}: ${checkinScores[i]}/40`).join('\n')
+        : '  No check-ins completed yet',
+      ``,
+      `--- STREAK ---`,
+      `  Current streak: ${streak} days`,
+      ``,
+      `Note: This data contains no personal identifying information.`,
+      `Shared voluntarily by user for research purposes.`,
+    ];
+
+    const text = lines.join('\n');
+
+    try {
+      await Share.share({ message: text, title: 'NeuroVet Data Export' });
+    } catch {
+      Alert.alert('Export failed', 'Please try again.');
+    }
+  }
 
   async function loadAll() {
     const [mh, mb, fh, fb, sh, sbb, ch, st] = await Promise.all([
@@ -256,6 +306,15 @@ export default function ProgressScreen() {
         )}
       </View>
 
+      {/* Export button */}
+      <TouchableOpacity style={styles.exportButton} onPress={exportData}>
+        <Text style={styles.exportButtonText}>Share My Data</Text>
+      </TouchableOpacity>
+      <Text style={styles.exportNote}>
+        Generates a plain-text summary with no personal information.{'\n'}
+        You control what gets shared and with whom.
+      </Text>
+
     </ScrollView>
   );
 }
@@ -289,4 +348,10 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   legendText: { fontSize: 12, color: '#8899aa' },
+  exportButton: {
+    backgroundColor: '#1a2e4a', borderRadius: 14, paddingVertical: 16,
+    alignItems: 'center', marginTop: 8, borderWidth: 1, borderColor: '#7eb8a4',
+  },
+  exportButtonText: { fontSize: 16, fontWeight: '600', color: '#7eb8a4' },
+  exportNote: { fontSize: 12, color: '#445566', textAlign: 'center', lineHeight: 18, marginTop: 10, marginBottom: 8 },
 });
