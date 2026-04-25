@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -106,19 +106,15 @@ export default function ProgressScreen() {
     }, [])
   );
 
-  async function exportData() {
+  function buildExportText(): string | null {
     const { memoryHistory, focusHistory, speedHistory, checkinHistory, streak } = stats;
-
     if (memoryHistory.length === 0 && focusHistory.length === 0 && speedHistory.length === 0) {
-      Alert.alert('No data yet', 'Complete some exercises first before exporting.');
-      return;
+      return null;
     }
-
     const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const checkinScores = checkinHistory.map(e => e.score);
     const checkinDates = checkinHistory.map(e => e.date);
-
-    const lines = [
+    return [
       `NeuroVet — Data Export`,
       `Generated: ${date}`,
       ``,
@@ -143,17 +139,30 @@ export default function ProgressScreen() {
       `--- STREAK ---`,
       `  Current streak: ${streak} days`,
       ``,
-      `Note: This data contains no personal identifying information.`,
-      `Shared voluntarily by user for research purposes.`,
-    ];
+      `Note: No personal identifying information included.`,
+      `Shared voluntarily for research purposes.`,
+    ].join('\n');
+  }
 
-    const text = lines.join('\n');
+  async function sendViaText() {
+    const text = buildExportText();
+    if (!text) { Alert.alert('No data yet', 'Complete some exercises first.'); return; }
+    const encoded = encodeURIComponent(text);
+    const url = `sms:REDACTED&body=${encoded}`;
+    const supported = await Linking.canOpenURL(url);
+    if (supported) { await Linking.openURL(url); }
+    else { Alert.alert('Cannot open Messages', 'Please send manually.'); }
+  }
 
-    try {
-      await Share.share({ message: text, title: 'NeuroVet Data Export' });
-    } catch {
-      Alert.alert('Export failed', 'Please try again.');
-    }
+  async function sendViaEmail() {
+    const text = buildExportText();
+    if (!text) { Alert.alert('No data yet', 'Complete some exercises first.'); return; }
+    const subject = encodeURIComponent(`NeuroVet Data — ${new Date().toLocaleDateString()}`);
+    const body = encodeURIComponent(text);
+    const url = `mailto:redacted@example.com?subject=${subject}&body=${body}`;
+    const supported = await Linking.canOpenURL(url);
+    if (supported) { await Linking.openURL(url); }
+    else { Alert.alert('Cannot open Mail', 'Please send manually.'); }
   }
 
   async function loadAll() {
@@ -306,13 +315,18 @@ export default function ProgressScreen() {
         )}
       </View>
 
-      {/* Export button */}
-      <TouchableOpacity style={styles.exportButton} onPress={exportData}>
-        <Text style={styles.exportButtonText}>Share My Data</Text>
-      </TouchableOpacity>
+      {/* Export buttons */}
+      <View style={styles.exportRow}>
+        <TouchableOpacity style={styles.exportButton} onPress={sendViaText}>
+          <Text style={styles.exportButtonText}>📱 Send via Text</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.exportButton, styles.exportButtonEmail]} onPress={sendViaEmail}>
+          <Text style={styles.exportButtonText}>✉️ Send via Email</Text>
+        </TouchableOpacity>
+      </View>
       <Text style={styles.exportNote}>
-        Generates a plain-text summary with no personal information.{'\n'}
-        You control what gets shared and with whom.
+        Sends scores only — no name, no location, no personal info.{'\n'}
+        You control every share.
       </Text>
 
     </ScrollView>
@@ -348,10 +362,12 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   legendText: { fontSize: 12, color: '#8899aa' },
+  exportRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
   exportButton: {
-    backgroundColor: '#1a2e4a', borderRadius: 14, paddingVertical: 16,
-    alignItems: 'center', marginTop: 8, borderWidth: 1, borderColor: '#7eb8a4',
+    flex: 1, backgroundColor: '#1a2e4a', borderRadius: 14, paddingVertical: 16,
+    alignItems: 'center', borderWidth: 1, borderColor: '#7eb8a4',
   },
-  exportButtonText: { fontSize: 16, fontWeight: '600', color: '#7eb8a4' },
+  exportButtonEmail: { borderColor: '#8aabcc' },
+  exportButtonText: { fontSize: 14, fontWeight: '600', color: '#7eb8a4' },
   exportNote: { fontSize: 12, color: '#445566', textAlign: 'center', lineHeight: 18, marginTop: 10, marginBottom: 8 },
 });
