@@ -44,6 +44,7 @@ export default function HomeScreen() {
   const [completedToday, setCompletedToday] = useState(false);
   const [lastCheckinDate, setLastCheckinDate] = useState<string | null>(null);
   const [lastCheckinScore, setLastCheckinScore] = useState<number | null>(null);
+  const [todayMood, setTodayMood] = useState<number | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -77,6 +78,21 @@ export default function HomeScreen() {
     const checkinScore = await AsyncStorage.getItem('checkinLastScore');
     setLastCheckinDate(checkinDate);
     if (checkinScore) setLastCheckinScore(Number(checkinScore));
+
+    const moodDate = await AsyncStorage.getItem('moodLastDate');
+    const moodVal = await AsyncStorage.getItem('moodLastValue');
+    if (moodDate === todayString() && moodVal) setTodayMood(Number(moodVal));
+    else setTodayMood(null);
+  }
+
+  async function saveMood(value: number) {
+    setTodayMood(value);
+    await AsyncStorage.setItem('moodLastDate', todayString());
+    await AsyncStorage.setItem('moodLastValue', String(value));
+    const existing = await AsyncStorage.getItem('moodHistory');
+    const history = existing ? JSON.parse(existing) : [];
+    const updated = [...history, { date: todayString(), mood: value }].slice(-60);
+    await AsyncStorage.setItem('moodHistory', JSON.stringify(updated));
   }
 
   async function saveName() {
@@ -221,6 +237,37 @@ export default function HomeScreen() {
           </Text>
         )}
 
+        {/* Daily Mood Check-In */}
+        <View style={styles.moodCard}>
+          <Text style={styles.moodTitle}>How are you feeling today?</Text>
+          {todayMood === null ? (
+            <View style={styles.moodRow}>
+              {[
+                { value: 1, emoji: '😞' },
+                { value: 2, emoji: '😕' },
+                { value: 3, emoji: '😐' },
+                { value: 4, emoji: '🙂' },
+                { value: 5, emoji: '😄' },
+              ].map(opt => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={styles.moodButton}
+                  onPress={() => saveMood(opt.value)}
+                >
+                  <Text style={styles.moodEmoji}>{opt.emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.moodDoneRow}>
+              <Text style={styles.moodDoneEmoji}>
+                {['😞','😕','😐','🙂','😄'][todayMood - 1]}
+              </Text>
+              <Text style={styles.moodDoneText}>Logged for today</Text>
+            </View>
+          )}
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -284,4 +331,16 @@ const styles = StyleSheet.create({
   logoTagline: { fontSize: 12, color: '#7eb8a4', marginTop: 2 },
   settingsButton: { padding: 8 },
   settingsIcon: { fontSize: 22 },
+  moodCard: {
+    width: '100%', backgroundColor: '#1a2e4a', borderRadius: 16,
+    padding: 18, marginTop: 16, borderWidth: 1, borderColor: '#2a4a6a',
+    alignItems: 'center',
+  },
+  moodTitle: { fontSize: 15, color: '#aabbcc', fontWeight: '600', marginBottom: 14 },
+  moodRow: { flexDirection: 'row', gap: 12 },
+  moodButton: { padding: 8 },
+  moodEmoji: { fontSize: 36 },
+  moodDoneRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  moodDoneEmoji: { fontSize: 36 },
+  moodDoneText: { fontSize: 14, color: '#7eb8a4', fontWeight: '600' },
 });

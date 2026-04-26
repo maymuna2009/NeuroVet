@@ -4,6 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 
 type CheckinEntry = { date: string; score: number };
+type MoodEntry = { date: string; mood: number };
+
+const MOOD_EMOJIS = ['😞', '😕', '😐', '🙂', '😄'];
+const MOOD_COLORS = ['#cc6666', '#c8a87e', '#8899aa', '#7eb8a4', '#5ec8a4'];
 
 type Stats = {
   memoryHistory: number[];
@@ -13,6 +17,7 @@ type Stats = {
   speedHistory: number[];
   speedBest: number;
   checkinHistory: CheckinEntry[];
+  moodHistory: MoodEntry[];
   streak: number;
 };
 
@@ -96,7 +101,7 @@ export default function ProgressScreen() {
     memoryHistory: [], memoryBest: 0,
     focusHistory: [],  focusBest: 0,
     speedHistory: [],  speedBest: 0,
-    checkinHistory: [], streak: 0,
+    checkinHistory: [], moodHistory: [], streak: 0,
   });
 
   // Reload every time user switches to this tab
@@ -210,7 +215,7 @@ export default function ProgressScreen() {
   }
 
   async function loadAll() {
-    const [mh, mb, fh, fb, sh, sbb, ch, st] = await Promise.all([
+    const [mh, mb, fh, fb, sh, sbb, ch, moodH, st] = await Promise.all([
       AsyncStorage.getItem('memoryGridHistory'),
       AsyncStorage.getItem('memoryGridBest'),
       AsyncStorage.getItem('focusHistory'),
@@ -218,18 +223,20 @@ export default function ProgressScreen() {
       AsyncStorage.getItem('speedMatchHistory'),
       AsyncStorage.getItem('speedMatchBest'),
       AsyncStorage.getItem('checkinHistory'),
+      AsyncStorage.getItem('moodHistory'),
       AsyncStorage.getItem('streak'),
     ]);
 
     setStats({
-      memoryHistory:   mh  ? JSON.parse(mh)  : [],
-      memoryBest:      mb  ? Number(mb)       : 0,
-      focusHistory:    fh  ? JSON.parse(fh)   : [],
-      focusBest:       fb  ? Number(fb)       : 0,
-      speedHistory:    sh  ? JSON.parse(sh)   : [],
-      speedBest:       sbb ? Number(sbb)      : 0,
-      checkinHistory:  ch  ? JSON.parse(ch)   : [],
-      streak:          st  ? Number(st)       : 0,
+      memoryHistory:   mh     ? JSON.parse(mh)     : [],
+      memoryBest:      mb     ? Number(mb)          : 0,
+      focusHistory:    fh     ? JSON.parse(fh)      : [],
+      focusBest:       fb     ? Number(fb)          : 0,
+      speedHistory:    sh     ? JSON.parse(sh)      : [],
+      speedBest:       sbb    ? Number(sbb)         : 0,
+      checkinHistory:  ch     ? JSON.parse(ch)      : [],
+      moodHistory:     moodH  ? JSON.parse(moodH)   : [],
+      streak:          st     ? Number(st)          : 0,
     });
   }
 
@@ -359,6 +366,28 @@ export default function ProgressScreen() {
         )}
       </View>
 
+      {/* Mood History */}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View>
+            <Text style={styles.cardTitle}>Daily Mood</Text>
+            <Text style={styles.cardTag}>Self-reported · 1 (low) to 5 (great)</Text>
+          </View>
+        </View>
+        {stats.moodHistory.length > 0 ? (
+          <View style={styles.moodBars}>
+            {stats.moodHistory.slice(-14).map((entry, i) => (
+              <View key={i} style={styles.moodBarWrapper}>
+                <Text style={styles.moodBarEmoji}>{MOOD_EMOJIS[entry.mood - 1]}</Text>
+                <View style={[styles.moodBar, { height: entry.mood * 14, backgroundColor: MOOD_COLORS[entry.mood - 1] }]} />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.noData}>No mood logs yet — log your mood daily from the Home tab</Text>
+        )}
+      </View>
+
       {/* Export buttons */}
       <View style={styles.exportRow}>
         <TouchableOpacity style={styles.exportButton} onPress={sendViaText}>
@@ -422,4 +451,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginTop: 10, borderWidth: 1, borderColor: '#8aabcc',
   },
   caregiverButtonText: { fontSize: 15, fontWeight: '600', color: '#8aabcc' },
+  moodBars: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 90, flexWrap: 'wrap', marginTop: 8 },
+  moodBarWrapper: { alignItems: 'center', gap: 4 },
+  moodBarEmoji: { fontSize: 14 },
+  moodBar: { width: 18, borderRadius: 4 },
 });
