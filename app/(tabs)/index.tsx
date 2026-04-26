@@ -40,9 +40,9 @@ const MOOD_EMOJIS = ['😞', '😕', '😐', '🙂', '😄'];
 const SLEEP_EMOJIS = ['😴', '😟', '😐', '😊', '🌟'];
 
 const EXERCISES = [
-  { route: '/exercises/memory-grid', name: 'Memory Grid', sub: 'Working Memory', emoji: '🟦', key: 'memoryGridLast', color: '#7eb8a4' },
-  { route: '/exercises/focus-filter', name: 'Focus Filter', sub: 'Attention', emoji: '🎯', key: 'focusLastAccuracy', color: '#8aabcc' },
-  { route: '/exercises/speed-match', name: 'Speed Match', sub: 'Processing Speed', emoji: '⚡', key: 'speedMatchLast', color: '#c8a87e' },
+  { route: '/exercises/memory-grid', name: 'Memory Grid', sub: 'Working Memory', icon: 'grid-outline' as const, key: 'memoryGridLast', color: '#7eb8a4', unit: '' },
+  { route: '/exercises/focus-filter', name: 'Focus Filter', sub: 'Attention', icon: 'eye-outline' as const, key: 'focusLastAccuracy', color: '#8aabcc', unit: '%' },
+  { route: '/exercises/speed-match', name: 'Speed Match', sub: 'Processing Speed', icon: 'flash-outline' as const, key: 'speedMatchLast', color: '#c8a87e', unit: '' },
 ];
 
 export default function HomeScreen() {
@@ -192,7 +192,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.logoIcon}>
-              <Text style={styles.logoEmoji}>🧠</Text>
+              <Ionicons name="fitness-outline" size={22} color="#7eb8a4" />
             </View>
             <View>
               <Text style={[styles.greeting, { fontSize: fs(17) }]}>{greeting()}, {userName}</Text>
@@ -215,7 +215,7 @@ export default function HomeScreen() {
           <View style={styles.heroRight}>
             <View style={[styles.statusPill, completedToday ? styles.statusPillDone : styles.statusPillPending]}>
               <Text style={[styles.statusPillText, { fontSize: fs(13) }]}>
-                {completedToday ? '✓  Done today' : '○  Not done yet'}
+                {completedToday ? '✓ Done' : '○ Pending'}
               </Text>
             </View>
             <Text style={styles.heroSub}>
@@ -237,29 +237,33 @@ export default function HomeScreen() {
 
         {/* Exercise cards */}
         <Text style={styles.sectionLabel}>EXERCISES</Text>
-        {EXERCISES.map(ex => (
-          <TouchableOpacity
-            key={ex.route}
-            style={styles.exerciseCard}
-            onPress={() => router.push(ex.route as any)}
-            activeOpacity={0.75}
-          >
-            <View style={[styles.exerciseAccent, { backgroundColor: ex.color + '33' }]}>
-              <Text style={styles.exerciseEmoji}>{ex.emoji}</Text>
-            </View>
-            <View style={styles.exerciseInfo}>
-              <Text style={[styles.exerciseName, { fontSize: fs(15) }]}>{ex.name}</Text>
-              <Text style={styles.exerciseSub}>{ex.sub}</Text>
-            </View>
-            <View style={styles.exerciseScore}>
-              <Text style={[styles.exerciseScoreVal, { color: ex.color }]}>
-                {lastScores[ex.key] ?? '—'}
-              </Text>
-              <Text style={styles.exerciseScoreLabel}>last</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#445566" />
-          </TouchableOpacity>
-        ))}
+        {EXERCISES.map(ex => {
+          const rawScore = lastScores[ex.key];
+          const scoreDisplay = rawScore && Number(rawScore) > 0
+            ? `${rawScore}${ex.unit}`
+            : '—';
+          return (
+            <TouchableOpacity
+              key={ex.route}
+              style={[styles.exerciseCard, { borderLeftColor: ex.color }]}
+              onPress={() => router.push(ex.route as any)}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.exerciseIconBox, { backgroundColor: ex.color + '22' }]}>
+                <Ionicons name={ex.icon} size={22} color={ex.color} />
+              </View>
+              <View style={styles.exerciseInfo}>
+                <Text style={[styles.exerciseName, { fontSize: fs(15) }]}>{ex.name}</Text>
+                <Text style={styles.exerciseSub}>{ex.sub}</Text>
+              </View>
+              <View style={styles.exerciseScore}>
+                <Text style={[styles.exerciseScoreVal, { color: ex.color }]}>{scoreDisplay}</Text>
+                {scoreDisplay !== '—' && <Text style={styles.exerciseScoreLabel}>last</Text>}
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#445566" />
+            </TouchableOpacity>
+          );
+        })}
 
         {/* Data tiles */}
         <Text style={styles.sectionLabel}>TODAY</Text>
@@ -316,6 +320,14 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Built for those who served. Every session matters.
+          </Text>
+          <Text style={styles.footerSub}>NeuroVet · Made for veterans, with care</Text>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -323,7 +335,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#0a1628' },
-  container: { padding: 20, paddingTop: 12, paddingBottom: 48 },
+  container: { padding: 20, paddingTop: 12, paddingBottom: 16 },
 
   // Onboarding
   onboardContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
@@ -335,30 +347,30 @@ const styles = StyleSheet.create({
   onboardDisclaimer: { fontSize: 12, color: '#445566', marginTop: 16, textAlign: 'center' },
 
   // Header
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22, marginTop: 10 },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logoIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#1a2e4a', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2a4a6a' },
   logoEmoji: { fontSize: 22 },
-  greeting: { fontSize: 17, fontWeight: 'bold', color: '#ffffff' },
-  date: { fontSize: 12, color: '#8899aa', marginTop: 1 },
+  greeting: { fontSize: 22, fontWeight: 'bold', color: '#ffffff' },
+  date: { fontSize: 14, color: '#8899aa', marginTop: 4 },
   settingsButton: { padding: 6 },
 
   // Hero card
-  heroCard: { backgroundColor: '#1a2e4a', borderRadius: 20, padding: 22, flexDirection: 'row', alignItems: 'center', marginBottom: 14, borderWidth: 1, borderColor: '#2a4a6a' },
+  heroCard: { backgroundColor: '#1a2e4a', borderRadius: 20, paddingVertical: 20, paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: '#2a4a6a' },
   heroLeft: { alignItems: 'center', flex: 1 },
-  streakNumber: { fontSize: 60, fontWeight: 'bold', color: '#7eb8a4', lineHeight: 66 },
+  streakNumber: { fontSize: 60, fontWeight: 'bold', color: '#7eb8a4', lineHeight: 64 },
   streakLabel: { fontSize: 13, color: '#8899aa', marginTop: 2 },
   heroBadge: { fontSize: 11, color: '#c8a87e', marginTop: 6 },
   heroDivider: { width: 1, height: 64, backgroundColor: '#2a4a6a', marginHorizontal: 18 },
   heroRight: { flex: 1, alignItems: 'center', gap: 8 },
-  statusPill: { borderRadius: 20, paddingVertical: 8, paddingHorizontal: 14 },
-  statusPillDone: { backgroundColor: '#1a3a2a' },
+  statusPill: { borderRadius: 20, paddingVertical: 8, paddingHorizontal: 18 },
+  statusPillDone: { backgroundColor: '#7eb8a4' },
   statusPillPending: { backgroundColor: '#2a2a1a' },
-  statusPillText: { fontSize: 13, fontWeight: '600', color: '#ccddcc' },
+  statusPillText: { fontSize: 13, fontWeight: '700', color: '#0a1628', textAlign: 'center' },
   heroSub: { fontSize: 12, color: '#8899aa' },
 
   // Primary button
-  primaryButton: { backgroundColor: '#7eb8a4', paddingVertical: 15, borderRadius: 14, alignItems: 'center', marginBottom: 24 },
+  primaryButton: { backgroundColor: '#7eb8a4', paddingVertical: 13, borderRadius: 14, alignItems: 'center', marginBottom: 16 },
   primaryButtonDone: { backgroundColor: '#1a2e4a' },
   primaryButtonText: { fontSize: 16, fontWeight: 'bold', color: '#0a1628' },
   primaryButtonTextDone: { color: '#7eb8a4' },
@@ -367,9 +379,9 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 11, fontWeight: '700', color: '#445566', letterSpacing: 1.2, marginBottom: 10 },
 
   // Exercise cards
-  exerciseCard: { backgroundColor: '#1a2e4a', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 8, borderWidth: 1, borderColor: '#2a4a6a' },
+  exerciseCard: { backgroundColor: '#1a2e4a', borderRadius: 14, padding: 11, flexDirection: 'row', alignItems: 'center', marginBottom: 7, borderWidth: 1, borderColor: '#2a4a6a', borderLeftWidth: 3 },
   exerciseAccent: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  exerciseEmoji: { fontSize: 20 },
+  exerciseIconBox: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   exerciseInfo: { flex: 1 },
   exerciseName: { fontSize: 15, fontWeight: '600', color: '#ffffff' },
   exerciseSub: { fontSize: 12, color: '#8899aa', marginTop: 2 },
@@ -393,4 +405,7 @@ const styles = StyleSheet.create({
   pickerButton: { padding: 6 },
   pickerEmoji: { fontSize: 34 },
   pickerHint: { fontSize: 11, color: '#445566', marginTop: 12 },
+  footer: { marginTop: 20, alignItems: 'center', paddingBottom: 8 },
+  footerText: { fontSize: 14, color: '#445566', textAlign: 'center', lineHeight: 20, fontStyle: 'italic' },
+  footerSub: { fontSize: 11, color: '#2a4a6a', marginTop: 6 },
 });
