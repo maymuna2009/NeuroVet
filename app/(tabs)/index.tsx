@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTextSize } from '@/context/TextSizeContext';
 
 function todayString(): string {
   return new Date().toISOString().split('T')[0];
@@ -38,6 +39,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const [userName, setUserName] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
+  const { fs } = useTextSize();
   const [streak, setStreak] = useState(0);
   const [completedToday, setCompletedToday] = useState(false);
   const [lastCheckinDate, setLastCheckinDate] = useState<string | null>(null);
@@ -153,22 +155,22 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.greeting}>{greeting()}, {userName}</Text>
-        <Text style={styles.date}>{new Date().toLocaleDateString('en-US', {
+        <Text style={[styles.greeting, { fontSize: fs(26) }]}>{greeting()}, {userName}</Text>
+        <Text style={[styles.date, { fontSize: fs(15) }]}>{new Date().toLocaleDateString('en-US', {
           weekday: 'long', month: 'long', day: 'numeric',
         })}</Text>
 
         {/* Streak card */}
         <View style={styles.streakCard}>
-          <Text style={styles.streakNumber}>{streak}</Text>
-          <Text style={styles.streakLabel}>Day Streak</Text>
-          {streak >= 7  && <Text style={styles.badge}>🔥 One week strong</Text>}
-          {streak >= 30 && <Text style={styles.badge}>⭐ 30-day milestone</Text>}
+          <Text style={[styles.streakNumber, { fontSize: fs(72) }]}>{streak}</Text>
+          <Text style={[styles.streakLabel, { fontSize: fs(18) }]}>Day Streak</Text>
+          {streak >= 7  && <Text style={[styles.badge, { fontSize: fs(13) }]}>🔥 One week strong</Text>}
+          {streak >= 30 && <Text style={[styles.badge, { fontSize: fs(13) }]}>⭐ 30-day milestone</Text>}
         </View>
 
         {/* Exercise status */}
         <View style={[styles.statusCard, completedToday ? styles.statusDone : styles.statusPending]}>
-          <Text style={styles.statusText}>
+          <Text style={[styles.statusText, { fontSize: fs(15) }]}>
             {completedToday ? '✓ Exercises done today' : 'Exercises not done yet today'}
           </Text>
         </View>

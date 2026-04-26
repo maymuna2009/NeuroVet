@@ -5,6 +5,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
+import { useTextSize } from '@/context/TextSizeContext';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -40,6 +41,7 @@ function formatTime(hour: number, minute: number): string {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { setLargeText: setContextLargeText } = useTextSize();
   const [remindersOn, setRemindersOn] = useState(false);
   const [selectedHour, setSelectedHour] = useState(9);
   const [selectedMinute, setSelectedMinute] = useState(0);
@@ -98,6 +100,7 @@ export default function SettingsScreen() {
 
   async function toggleLargeText(val: boolean) {
     setLargeText(val);
+    setContextLargeText(val);
     await AsyncStorage.setItem('largeText', String(val));
   }
 
