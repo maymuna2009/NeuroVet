@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 type CheckinEntry = { date: string; score: number };
 type MoodEntry = { date: string; mood: number };
@@ -431,10 +432,14 @@ export default function ProgressScreen() {
       <TouchableOpacity style={styles.caregiverButton} onPress={sendToCaregiver}>
         <Text style={styles.caregiverButtonText}>👨‍👩‍👧 Send Weekly Summary to Caregiver</Text>
       </TouchableOpacity>
-      <Text style={styles.exportNote}>
-        Sends scores only — no name, no location, no personal info.{'\n'}
-        You control every share. Set caregiver email in ⚙️ Settings.
+      <Text style={styles.exportNoteTop}>
+        Sends scores only — no name, no location, no personal info.
       </Text>
+      <View style={styles.exportNoteRow}>
+        <Text style={styles.exportNote}>Set caregiver email via </Text>
+        <Ionicons name="settings-outline" size={13} color="#445566" />
+        <Text style={styles.exportNote}> on the Home screen.</Text>
+      </View>
 
     </ScrollView>
   );
@@ -476,7 +481,9 @@ const styles = StyleSheet.create({
   },
   exportButtonEmail: { borderColor: '#8aabcc' },
   exportButtonText: { fontSize: 14, fontWeight: '600', color: '#7eb8a4' },
-  exportNote: { fontSize: 12, color: '#445566', textAlign: 'center', lineHeight: 18, marginTop: 10, marginBottom: 8 },
+  exportNote: { fontSize: 12, color: '#445566', lineHeight: 18 },
+  exportNoteTop: { fontSize: 12, color: '#445566', lineHeight: 18, textAlign: 'center', marginTop: 10 },
+  exportNoteRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, marginBottom: 8 },
   caregiverButton: {
     backgroundColor: '#1a2e4a', borderRadius: 14, paddingVertical: 16,
     alignItems: 'center', marginTop: 10, borderWidth: 1, borderColor: '#8aabcc',
