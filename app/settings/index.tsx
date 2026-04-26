@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
@@ -45,6 +45,8 @@ export default function SettingsScreen() {
   const [selectedMinute, setSelectedMinute] = useState(0);
   const [largeText, setLargeText] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const [caregiverEmail, setCaregiverEmail] = useState('');
+  const [caregiverEmailSaved, setCaregiverEmailSaved] = useState(false);
 
   useEffect(() => { loadSettings(); }, []);
 
@@ -53,12 +55,21 @@ export default function SettingsScreen() {
     const h  = await AsyncStorage.getItem('reminderHour');
     const m  = await AsyncStorage.getItem('reminderMinute');
     const lt = await AsyncStorage.getItem('largeText');
+    const ce = await AsyncStorage.getItem('caregiverEmail');
     if (r)  setRemindersOn(r === 'true');
     if (h)  setSelectedHour(Number(h));
     if (m)  setSelectedMinute(Number(m));
     if (lt) setLargeText(lt === 'true');
+    if (ce) { setCaregiverEmail(ce); setCaregiverEmailSaved(true); }
     const { status } = await Notifications.getPermissionsAsync();
     setPermissionGranted(status === 'granted');
+  }
+
+  async function saveCaregiverEmail() {
+    const trimmed = caregiverEmail.trim();
+    if (!trimmed || !trimmed.includes('@')) return;
+    await AsyncStorage.setItem('caregiverEmail', trimmed);
+    setCaregiverEmailSaved(true);
   }
 
   async function toggleReminders(val: boolean) {
@@ -179,6 +190,33 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* Caregiver */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>CAREGIVER</Text>
+        <Text style={styles.sectionSub}>
+          Add a caregiver's email to send them weekly progress summaries from the Progress tab.
+        </Text>
+        <View style={styles.caregiverRow}>
+          <TextInput
+            style={styles.emailInput}
+            placeholder="Caregiver's email address"
+            placeholderTextColor="#445566"
+            value={caregiverEmail}
+            onChangeText={(t) => { setCaregiverEmail(t); setCaregiverEmailSaved(false); }}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            returnKeyType="done"
+            onSubmitEditing={saveCaregiverEmail}
+          />
+          <TouchableOpacity
+            style={[styles.saveButton, caregiverEmailSaved && styles.saveButtonDone]}
+            onPress={saveCaregiverEmail}
+          >
+            <Text style={styles.saveButtonText}>{caregiverEmailSaved ? '✓' : 'Save'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* App info */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>ABOUT</Text>
@@ -231,4 +269,16 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#2a4a6a', gap: 8,
   },
   infoRow: { fontSize: 13, color: '#8899aa' },
+  sectionSub: { fontSize: 13, color: '#667788', marginBottom: 12, lineHeight: 18 },
+  caregiverRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  emailInput: {
+    flex: 1, backgroundColor: '#1a2e4a', borderRadius: 12, padding: 14,
+    fontSize: 15, color: '#ffffff', borderWidth: 1, borderColor: '#2a4a6a',
+  },
+  saveButton: {
+    backgroundColor: '#1a2e4a', borderRadius: 12, paddingVertical: 14,
+    paddingHorizontal: 18, borderWidth: 1, borderColor: '#7eb8a4',
+  },
+  saveButtonDone: { backgroundColor: '#1a3a2a' },
+  saveButtonText: { fontSize: 15, fontWeight: 'bold', color: '#7eb8a4' },
 });

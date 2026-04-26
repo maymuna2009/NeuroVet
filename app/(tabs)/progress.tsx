@@ -165,6 +165,50 @@ export default function ProgressScreen() {
     else { Alert.alert('Cannot open Mail', 'Please send manually.'); }
   }
 
+  async function sendToCaregiver() {
+    const caregiverEmail = await AsyncStorage.getItem('caregiverEmail');
+    if (!caregiverEmail) {
+      Alert.alert('No caregiver email', 'Go to Settings (⚙️ on Home screen) and add a caregiver email first.');
+      return;
+    }
+    const text = buildExportText();
+    if (!text) { Alert.alert('No data yet', 'Complete some exercises first.'); return; }
+
+    const { memoryHistory, focusHistory, speedHistory, checkinHistory } = stats;
+    const latestCheckin = checkinHistory[checkinHistory.length - 1];
+    const zone = latestCheckin
+      ? latestCheckin.score <= 13 ? 'Low' : latestCheckin.score <= 26 ? 'Moderate' : 'High'
+      : null;
+
+    const memoryTrend = memoryHistory.length >= 2
+      ? memoryHistory[memoryHistory.length - 1] > memoryHistory[0] ? 'improving' : 'stable'
+      : 'not enough data yet';
+
+    const summary = [
+      `NeuroVet Weekly Caregiver Summary`,
+      `Generated: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`,
+      ``,
+      `--- PLAIN-LANGUAGE SUMMARY ---`,
+      memoryHistory.length > 0 ? `Memory: Best span this week = ${Math.max(...memoryHistory)} tiles (${memoryTrend})` : `Memory: No sessions yet`,
+      focusHistory.length > 0 ? `Attention: Best accuracy = ${Math.max(...focusHistory)}%` : `Attention: No sessions yet`,
+      speedHistory.length > 0 ? `Processing speed: Best = ${Math.max(...speedHistory)} correct in 60s` : `Processing speed: No sessions yet`,
+      latestCheckin ? `Symptom check-in: ${latestCheckin.score}/40 (${zone} symptom level)` : `Symptom check-in: Not completed`,
+      ``,
+      `--- FULL DATA ---`,
+      text,
+      ``,
+      `This summary was sent by the veteran from NeuroVet, a TBI cognitive rehabilitation app.`,
+      `For questions, please speak directly with the veteran or their VA provider.`,
+    ].join('\n');
+
+    const subject = encodeURIComponent(`NeuroVet Weekly Summary — ${new Date().toLocaleDateString()}`);
+    const body = encodeURIComponent(summary);
+    const url = `mailto:${caregiverEmail}?subject=${subject}&body=${body}`;
+    const supported = await Linking.canOpenURL(url);
+    if (supported) { await Linking.openURL(url); }
+    else { Alert.alert('Cannot open Mail', `Send manually to: ${caregiverEmail}`); }
+  }
+
   async function loadAll() {
     const [mh, mb, fh, fb, sh, sbb, ch, st] = await Promise.all([
       AsyncStorage.getItem('memoryGridHistory'),
@@ -324,9 +368,12 @@ export default function ProgressScreen() {
           <Text style={styles.exportButtonText}>✉️ Send via Email</Text>
         </TouchableOpacity>
       </View>
+      <TouchableOpacity style={styles.caregiverButton} onPress={sendToCaregiver}>
+        <Text style={styles.caregiverButtonText}>👨‍👩‍👧 Send Weekly Summary to Caregiver</Text>
+      </TouchableOpacity>
       <Text style={styles.exportNote}>
         Sends scores only — no name, no location, no personal info.{'\n'}
-        You control every share.
+        You control every share. Set caregiver email in ⚙️ Settings.
       </Text>
 
     </ScrollView>
@@ -370,4 +417,9 @@ const styles = StyleSheet.create({
   exportButtonEmail: { borderColor: '#8aabcc' },
   exportButtonText: { fontSize: 14, fontWeight: '600', color: '#7eb8a4' },
   exportNote: { fontSize: 12, color: '#445566', textAlign: 'center', lineHeight: 18, marginTop: 10, marginBottom: 8 },
+  caregiverButton: {
+    backgroundColor: '#1a2e4a', borderRadius: 14, paddingVertical: 16,
+    alignItems: 'center', marginTop: 10, borderWidth: 1, borderColor: '#8aabcc',
+  },
+  caregiverButtonText: { fontSize: 15, fontWeight: '600', color: '#8aabcc' },
 });
