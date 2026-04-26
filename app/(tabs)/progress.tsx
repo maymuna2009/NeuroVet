@@ -9,6 +9,8 @@ type MoodEntry = { date: string; mood: number };
 const MOOD_EMOJIS = ['😞', '😕', '😐', '🙂', '😄'];
 const MOOD_COLORS = ['#cc6666', '#c8a87e', '#8899aa', '#7eb8a4', '#5ec8a4'];
 
+type SleepEntry = { date: string; sleep: number };
+
 type Stats = {
   memoryHistory: number[];
   memoryBest: number;
@@ -18,6 +20,7 @@ type Stats = {
   speedBest: number;
   checkinHistory: CheckinEntry[];
   moodHistory: MoodEntry[];
+  sleepHistory: SleepEntry[];
   streak: number;
 };
 
@@ -101,7 +104,7 @@ export default function ProgressScreen() {
     memoryHistory: [], memoryBest: 0,
     focusHistory: [],  focusBest: 0,
     speedHistory: [],  speedBest: 0,
-    checkinHistory: [], moodHistory: [], streak: 0,
+    checkinHistory: [], moodHistory: [], sleepHistory: [], streak: 0,
   });
 
   // Reload every time user switches to this tab
@@ -215,7 +218,7 @@ export default function ProgressScreen() {
   }
 
   async function loadAll() {
-    const [mh, mb, fh, fb, sh, sbb, ch, moodH, st] = await Promise.all([
+    const [mh, mb, fh, fb, sh, sbb, ch, moodH, sleepH, st] = await Promise.all([
       AsyncStorage.getItem('memoryGridHistory'),
       AsyncStorage.getItem('memoryGridBest'),
       AsyncStorage.getItem('focusHistory'),
@@ -224,19 +227,21 @@ export default function ProgressScreen() {
       AsyncStorage.getItem('speedMatchBest'),
       AsyncStorage.getItem('checkinHistory'),
       AsyncStorage.getItem('moodHistory'),
+      AsyncStorage.getItem('sleepHistory'),
       AsyncStorage.getItem('streak'),
     ]);
 
     setStats({
-      memoryHistory:   mh     ? JSON.parse(mh)     : [],
-      memoryBest:      mb     ? Number(mb)          : 0,
-      focusHistory:    fh     ? JSON.parse(fh)      : [],
-      focusBest:       fb     ? Number(fb)          : 0,
-      speedHistory:    sh     ? JSON.parse(sh)      : [],
-      speedBest:       sbb    ? Number(sbb)         : 0,
-      checkinHistory:  ch     ? JSON.parse(ch)      : [],
-      moodHistory:     moodH  ? JSON.parse(moodH)   : [],
-      streak:          st     ? Number(st)          : 0,
+      memoryHistory:   mh      ? JSON.parse(mh)      : [],
+      memoryBest:      mb      ? Number(mb)           : 0,
+      focusHistory:    fh      ? JSON.parse(fh)       : [],
+      focusBest:       fb      ? Number(fb)           : 0,
+      speedHistory:    sh      ? JSON.parse(sh)       : [],
+      speedBest:       sbb     ? Number(sbb)          : 0,
+      checkinHistory:  ch      ? JSON.parse(ch)       : [],
+      moodHistory:     moodH   ? JSON.parse(moodH)    : [],
+      sleepHistory:    sleepH  ? JSON.parse(sleepH)   : [],
+      streak:          st      ? Number(st)           : 0,
     });
   }
 
@@ -385,6 +390,32 @@ export default function ProgressScreen() {
           </View>
         ) : (
           <Text style={styles.noData}>No mood logs yet — log your mood daily from the Home tab</Text>
+        )}
+      </View>
+
+      {/* Sleep History */}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View>
+            <Text style={styles.cardTitle}>Sleep Quality</Text>
+            <Text style={styles.cardTag}>Weekly self-report · 1 (poor) to 5 (excellent)</Text>
+          </View>
+        </View>
+        {stats.sleepHistory && stats.sleepHistory.length > 0 ? (
+          <View style={styles.moodBars}>
+            {stats.sleepHistory.slice(-14).map((entry: { date: string; sleep: number }, i: number) => {
+              const sleepEmojis = ['😴','😟','😐','😊','🌟'];
+              const sleepColors = ['#cc6666','#c8a87e','#8899aa','#7eb8a4','#5ec8a4'];
+              return (
+                <View key={i} style={styles.moodBarWrapper}>
+                  <Text style={styles.moodBarEmoji}>{sleepEmojis[entry.sleep - 1]}</Text>
+                  <View style={[styles.moodBar, { height: entry.sleep * 14, backgroundColor: sleepColors[entry.sleep - 1] }]} />
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={styles.noData}>No sleep logs yet — log weekly from the Home tab</Text>
         )}
       </View>
 

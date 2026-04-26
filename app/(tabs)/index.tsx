@@ -45,6 +45,9 @@ export default function HomeScreen() {
   const [lastCheckinDate, setLastCheckinDate] = useState<string | null>(null);
   const [lastCheckinScore, setLastCheckinScore] = useState<number | null>(null);
   const [todayMood, setTodayMood] = useState<number | null>(null);
+  const [badges, setBadges] = useState<{ emoji: string; label: string }[]>([]);
+  const [todaySleep, setTodaySleep] = useState<number | null>(null);
+  const [lastSleepDate, setLastSleepDate] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -83,6 +86,44 @@ export default function HomeScreen() {
     const moodVal = await AsyncStorage.getItem('moodLastValue');
     if (moodDate === todayString() && moodVal) setTodayMood(Number(moodVal));
     else setTodayMood(null);
+
+    // Sleep
+    const sleepDate = await AsyncStorage.getItem('sleepLastDate');
+    const sleepVal = await AsyncStorage.getItem('sleepLastValue');
+    setLastSleepDate(sleepDate);
+    if (sleepDate === todayString() && sleepVal) setTodaySleep(Number(sleepVal));
+    else setTodaySleep(null);
+
+    // Badges — derived from stored data
+    const memBest = await AsyncStorage.getItem('memoryGridBest');
+    const focusBest = await AsyncStorage.getItem('focusBestAccuracy');
+    const speedBest = await AsyncStorage.getItem('speedMatchBest');
+    const checkinHist = await AsyncStorage.getItem('checkinHistory');
+    const earned: { emoji: string; label: string }[] = [];
+
+    const currentStreak = Number(savedStreak) || 0;
+    if (currentStreak >= 7)  earned.push({ emoji: '🔥', label: '7-day streak' });
+    if (currentStreak >= 30) earned.push({ emoji: '⭐', label: '30-day streak' });
+    if (Number(memBest) >= 7)  earned.push({ emoji: '🧠', label: 'Memory span 7+' });
+    if (Number(focusBest) >= 90) earned.push({ emoji: '🎯', label: 'Focus 90%+' });
+    if (Number(speedBest) >= 30) earned.push({ emoji: '⚡', label: 'Speed 30+' });
+    if (checkinHist) {
+      const ch = JSON.parse(checkinHist);
+      if (ch.length >= 1) earned.push({ emoji: '📋', label: 'First check-in' });
+      if (ch.length >= 4) earned.push({ emoji: '🏅', label: '4 check-ins done' });
+    }
+    setBadges(earned);
+  }
+
+  async function saveSleep(value: number) {
+    setTodaySleep(value);
+    setLastSleepDate(todayString());
+    await AsyncStorage.setItem('sleepLastDate', todayString());
+    await AsyncStorage.setItem('sleepLastValue', String(value));
+    const existing = await AsyncStorage.getItem('sleepHistory');
+    const history = existing ? JSON.parse(existing) : [];
+    const updated = [...history, { date: todayString(), sleep: value }].slice(-60);
+    await AsyncStorage.setItem('sleepHistory', JSON.stringify(updated));
   }
 
   async function saveMood(value: number) {
@@ -237,6 +278,21 @@ export default function HomeScreen() {
           </Text>
         )}
 
+        {/* Achievement Badges */}
+        {badges.length > 0 && (
+          <View style={styles.badgesCard}>
+            <Text style={styles.badgesTitle}>Achievements</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.badgesScroll}>
+              {badges.map((b, i) => (
+                <View key={i} style={styles.achievementItem}>
+                  <Text style={styles.achievementEmoji}>{b.emoji}</Text>
+                  <Text style={styles.achievementLabel}>{b.label}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Daily Mood Check-In */}
         <View style={styles.moodCard}>
           <Text style={styles.moodTitle}>How are you feeling today?</Text>
@@ -266,6 +322,38 @@ export default function HomeScreen() {
               <Text style={styles.moodDoneText}>Logged for today</Text>
             </View>
           )}
+        </View>
+
+        {/* Weekly Sleep Quality */}
+        <View style={styles.moodCard}>
+          <Text style={styles.moodTitle}>How was your sleep this week?</Text>
+          {lastSleepDate !== null && daysSince(lastSleepDate) < 7 && todaySleep !== null ? (
+            <View style={styles.moodDoneRow}>
+              <Text style={styles.moodDoneEmoji}>
+                {['😴','😟','😐','😊','🌟'][todaySleep - 1]}
+              </Text>
+              <Text style={styles.moodDoneText}>Logged this week</Text>
+            </View>
+          ) : (
+            <View style={styles.moodRow}>
+              {[
+                { value: 1, emoji: '😴' },
+                { value: 2, emoji: '😟' },
+                { value: 3, emoji: '😐' },
+                { value: 4, emoji: '😊' },
+                { value: 5, emoji: '🌟' },
+              ].map(opt => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={styles.moodButton}
+                  onPress={() => saveSleep(opt.value)}
+                >
+                  <Text style={styles.moodEmoji}>{opt.emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          <Text style={styles.sleepHint}>1 = very poor · 5 = excellent</Text>
         </View>
 
       </ScrollView>
@@ -343,4 +431,14 @@ const styles = StyleSheet.create({
   moodDoneRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   moodDoneEmoji: { fontSize: 36 },
   moodDoneText: { fontSize: 14, color: '#7eb8a4', fontWeight: '600' },
+  sleepHint: { fontSize: 11, color: '#445566', marginTop: 10 },
+  badgesCard: {
+    width: '100%', backgroundColor: '#1a2e4a', borderRadius: 16,
+    padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#2a4a6a',
+  },
+  badgesTitle: { fontSize: 13, color: '#8899aa', fontWeight: '700', marginBottom: 12, letterSpacing: 1 },
+  badgesScroll: { flexDirection: 'row' },
+  achievementItem: { alignItems: 'center', marginRight: 16, minWidth: 60 },
+  achievementEmoji: { fontSize: 28 },
+  achievementLabel: { fontSize: 11, color: '#7eb8a4', marginTop: 4, textAlign: 'center' },
 });
