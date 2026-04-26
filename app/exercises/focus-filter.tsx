@@ -5,8 +5,17 @@ import { useRouter } from 'expo-router';
 
 const SESSION_SECONDS = 60;
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-const TARGET_CHANCE = 0.30; // 30% of letters shown are the target
-const LETTER_INTERVAL_MS = 1500; // new letter every 1.5 seconds
+const TARGET_CHANCE = 0.30;
+
+const FOCUS_INTERVALS = { beginner: 2000, normal: 1500, advanced: 1000 };
+
+function getAdaptiveInterval(history: number[]): number {
+  if (history.length < 3) return FOCUS_INTERVALS.beginner;
+  const avg = history.slice(-5).reduce((a, b) => a + b, 0) / Math.min(history.length, 5);
+  if (avg > 80) return FOCUS_INTERVALS.advanced;
+  if (avg >= 60) return FOCUS_INTERVALS.normal;
+  return FOCUS_INTERVALS.beginner;
+}
 
 type Phase = 'tutorial' | 'idle' | 'playing' | 'result';
 
@@ -81,6 +90,8 @@ export default function FocusFilterScreen() {
       });
     }, 1000);
 
+    const intervalMs = getAdaptiveInterval(history);
+
     // Letter flasher
     const letterInterval = setInterval(() => {
       // Score the previous letter before replacing it
@@ -93,7 +104,7 @@ export default function FocusFilterScreen() {
       const letter = nextLetter(targetRef.current);
       currentLetterRef.current = letter;
       setCurrentLetter(letter);
-    }, LETTER_INTERVAL_MS);
+    }, intervalMs);
 
     // End game after SESSION_SECONDS
     setTimeout(() => {
@@ -187,6 +198,12 @@ export default function FocusFilterScreen() {
             Session: 60 seconds
           </Text>
           <Text style={styles.bestLabel}>Best accuracy: {bestAccuracy}%</Text>
+          <Text style={styles.adaptiveLabel}>
+            {'Speed: '}
+            {getAdaptiveInterval(history) === FOCUS_INTERVALS.beginner && 'Slow (building up)'}
+            {getAdaptiveInterval(history) === FOCUS_INTERVALS.normal && 'Normal'}
+            {getAdaptiveInterval(history) === FOCUS_INTERVALS.advanced && 'Fast (advanced)'}
+          </Text>
           <TouchableOpacity style={styles.startButton} onPress={startGame}>
             <Text style={styles.startButtonText}>Start</Text>
           </TouchableOpacity>
@@ -323,6 +340,7 @@ const styles = StyleSheet.create({
   bar: { width: 28, backgroundColor: '#7eb8a4', borderRadius: 4 },
   startButton: { backgroundColor: '#7eb8a4', paddingVertical: 16, paddingHorizontal: 48, borderRadius: 14 },
   startButtonText: { fontSize: 18, fontWeight: 'bold', color: '#0a1628' },
+  adaptiveLabel: { fontSize: 13, color: '#7eb8a4', marginBottom: 20 },
   tutorialContainer: { flex: 1, backgroundColor: '#0a1628', alignItems: 'center', justifyContent: 'center', padding: 36 },
   tutorialEmoji: { fontSize: 72, marginBottom: 24 },
   tutorialTitle: { fontSize: 26, fontWeight: 'bold', color: '#ffffff', textAlign: 'center', marginBottom: 16 },

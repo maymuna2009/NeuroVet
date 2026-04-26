@@ -21,6 +21,15 @@ function randomPair() {
   return SYMBOL_MAP[Math.floor(Math.random() * SYMBOL_MAP.length)];
 }
 
+// Advanced users: key fades after 10s, forcing memorization
+function getKeyVisibleSeconds(history: number[]): number {
+  if (history.length < 3) return 60; // always visible for beginners
+  const avg = history.slice(-5).reduce((a, b) => a + b, 0) / Math.min(history.length, 5);
+  if (avg > 30) return 10; // hide key after 10s for advanced
+  if (avg > 15) return 30; // hide key after 30s for intermediate
+  return 60;              // always visible for beginners
+}
+
 export default function SpeedMatchScreen() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>('idle');
@@ -32,6 +41,7 @@ export default function SpeedMatchScreen() {
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [bestScore, setBestScore] = useState(0);
   const [history, setHistory] = useState<number[]>([]);
+  const [keyVisible, setKeyVisible] = useState(true);
 
   // Refs for use inside timer callbacks
   const correctRef = useRef(0);
@@ -67,11 +77,18 @@ export default function SpeedMatchScreen() {
     setCorrect(0); setWrong(0); setAvgReactionMs(0);
     setFeedback(null);
     setTimeLeft(SESSION_SECONDS);
+    setKeyVisible(true);
     setPhase('playing');
 
     const first = randomPair();
     setCurrentPair(first);
     pairShownAtRef.current = Date.now();
+
+    // Hide key after adaptive timeout
+    const keySeconds = getKeyVisibleSeconds(history);
+    if (keySeconds < SESSION_SECONDS) {
+      setTimeout(() => setKeyVisible(false), keySeconds * 1000);
+    }
 
     const timerInterval = setInterval(() => {
       setTimeLeft(prev => {
@@ -205,17 +222,23 @@ export default function SpeedMatchScreen() {
       {/* PLAYING */}
       {phase === 'playing' && (
         <View style={styles.centered}>
-          {/* Compact key reminder at top */}
-          <View style={styles.keyCardSmall}>
-            <View style={styles.keyRow}>
-              {SYMBOL_MAP.map(pair => (
-                <View key={pair.digit} style={styles.keyPairSmall}>
-                  <Text style={styles.keySymbolSmall}>{pair.symbol}</Text>
-                  <Text style={styles.keyDigitSmall}>{pair.digit}</Text>
-                </View>
-              ))}
+          {/* Compact key reminder — hidden for advanced users after timeout */}
+          {keyVisible ? (
+            <View style={styles.keyCardSmall}>
+              <View style={styles.keyRow}>
+                {SYMBOL_MAP.map(pair => (
+                  <View key={pair.digit} style={styles.keyPairSmall}>
+                    <Text style={styles.keySymbolSmall}>{pair.symbol}</Text>
+                    <Text style={styles.keyDigitSmall}>{pair.digit}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
+          ) : (
+            <View style={styles.keyCardSmall}>
+              <Text style={styles.keyHiddenText}>Key hidden — from memory!</Text>
+            </View>
+          )}
 
           {/* Timer + live score */}
           <View style={styles.statsRow}>
@@ -367,4 +390,5 @@ const styles = StyleSheet.create({
   tutorialButtonText: { fontSize: 18, fontWeight: 'bold', color: '#0a1628' },
   tutorialSkip: { padding: 8 },
   tutorialSkipText: { fontSize: 14, color: '#445566' },
+  keyHiddenText: { fontSize: 13, color: '#c8a87e', fontWeight: '600', textAlign: 'center', paddingVertical: 4 },
 });

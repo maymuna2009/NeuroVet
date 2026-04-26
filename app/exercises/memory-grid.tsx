@@ -10,7 +10,22 @@ const TILE_COUNT = GRID_SIZE * GRID_SIZE;
 const FEEDBACK_MS = 800;
 
 type Phase = 'tutorial' | 'idle' | 'showing' | 'input' | 'feedback_correct' | 'result';
-type Difficulty = 'easy' | 'medium' | 'hard';
+type Difficulty = 'auto' | 'easy' | 'medium' | 'hard';
+
+type CoreDifficulty = 'easy' | 'medium' | 'hard';
+
+function getAdaptiveDifficulty(history: number[]): CoreDifficulty {
+  if (history.length < 3) return 'easy';
+  const avg = history.slice(-5).reduce((a, b) => a + b, 0) / Math.min(history.length, 5);
+  if (avg > 6) return 'hard';
+  if (avg >= 4) return 'medium';
+  return 'easy';
+}
+
+function resolvedDifficulty(difficulty: Difficulty, history: number[]): CoreDifficulty {
+  if (difficulty === 'auto') return getAdaptiveDifficulty(history);
+  return difficulty;
+}
 
 const DIFFICULTY_SETTINGS = {
   easy:   { startLevel: 3, highlightMs: 900, gapMs: 400 },
@@ -27,7 +42,7 @@ export default function MemoryGridScreen() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>('idle');
   const [tutorialStep, setTutorialStep] = useState(0);
-  const [difficulty, setDifficulty] = useState<Difficulty>('easy');
+  const [difficulty, setDifficulty] = useState<Difficulty>('auto');
   const [level, setLevel] = useState(3);
   const [sequence, setSequence] = useState<number[]>([]);
   const [userTaps, setUserTaps] = useState<number[]>([]);
@@ -56,7 +71,7 @@ export default function MemoryGridScreen() {
   }
 
   function showSequence(seq: number[]) {
-    const { highlightMs, gapMs } = DIFFICULTY_SETTINGS[difficulty];
+    const { highlightMs, gapMs } = DIFFICULTY_SETTINGS[resolvedDifficulty(difficulty, history)];
     setPhase('showing');
     setUserTaps([]);
     seq.forEach((tileIndex, i) => {
@@ -67,7 +82,7 @@ export default function MemoryGridScreen() {
   }
 
   function startGame() {
-    const startLevel = DIFFICULTY_SETTINGS[difficulty].startLevel;
+    const startLevel = DIFFICULTY_SETTINGS[resolvedDifficulty(difficulty, history)].startLevel;
     setLevel(startLevel);
     setScore(0);
     const seq = randomSequence(startLevel);
@@ -163,14 +178,14 @@ export default function MemoryGridScreen() {
 
       {!gameActive && (
         <View style={styles.diffRow}>
-          {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
+          {(['auto', 'easy', 'medium', 'hard'] as Difficulty[]).map(d => (
             <TouchableOpacity
               key={d}
               style={[styles.diffButton, difficulty === d && styles.diffButtonActive]}
               onPress={() => setDifficulty(d)}
             >
               <Text style={[styles.diffText, difficulty === d && styles.diffTextActive]}>
-                {d.charAt(0).toUpperCase() + d.slice(1)}
+                {d === 'auto' ? '✦ Auto' : d.charAt(0).toUpperCase() + d.slice(1)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -179,6 +194,7 @@ export default function MemoryGridScreen() {
 
       {!gameActive && (
         <Text style={styles.diffHint}>
+          {difficulty === 'auto'   && `Auto · based on your history → ${resolvedDifficulty('auto', history)}`}
           {difficulty === 'easy'   && 'Start at 3 tiles · slow flash'}
           {difficulty === 'medium' && 'Start at 4 tiles · medium flash'}
           {difficulty === 'hard'   && 'Start at 5 tiles · fast flash'}
