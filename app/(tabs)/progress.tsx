@@ -19,6 +19,10 @@ type Stats = {
   focusBest: number;
   speedHistory: number[];
   speedBest: number;
+  trailHistoryA: number[];
+  trailBestA: number | null;
+  trailHistoryB: number[];
+  trailBestB: number | null;
   checkinHistory: CheckinEntry[];
   moodHistory: MoodEntry[];
   sleepHistory: SleepEntry[];
@@ -105,6 +109,8 @@ export default function ProgressScreen() {
     memoryHistory: [], memoryBest: 0,
     focusHistory: [],  focusBest: 0,
     speedHistory: [],  speedBest: 0,
+    trailHistoryA: [], trailBestA: null,
+    trailHistoryB: [], trailBestB: null,
     checkinHistory: [], moodHistory: [], sleepHistory: [], streak: 0,
   });
 
@@ -219,13 +225,17 @@ export default function ProgressScreen() {
   }
 
   async function loadAll() {
-    const [mh, mb, fh, fb, sh, sbb, ch, moodH, sleepH, st] = await Promise.all([
+    const [mh, mb, fh, fb, sh, sbb, tah, tab, tbh, tbb, ch, moodH, sleepH, st] = await Promise.all([
       AsyncStorage.getItem('memoryGridHistory'),
       AsyncStorage.getItem('memoryGridBest'),
       AsyncStorage.getItem('focusHistory'),
       AsyncStorage.getItem('focusBestAccuracy'),
       AsyncStorage.getItem('speedMatchHistory'),
       AsyncStorage.getItem('speedMatchBest'),
+      AsyncStorage.getItem('trailHistoryA'),
+      AsyncStorage.getItem('trailBestA'),
+      AsyncStorage.getItem('trailHistoryB'),
+      AsyncStorage.getItem('trailBestB'),
       AsyncStorage.getItem('checkinHistory'),
       AsyncStorage.getItem('moodHistory'),
       AsyncStorage.getItem('sleepHistory'),
@@ -239,6 +249,10 @@ export default function ProgressScreen() {
       focusBest:       fb      ? Number(fb)           : 0,
       speedHistory:    sh      ? JSON.parse(sh)       : [],
       speedBest:       sbb     ? Number(sbb)          : 0,
+      trailHistoryA:   tah     ? JSON.parse(tah)      : [],
+      trailBestA:      tab     ? Number(tab)          : null,
+      trailHistoryB:   tbh     ? JSON.parse(tbh)      : [],
+      trailBestB:      tbb     ? Number(tbb)          : null,
       checkinHistory:  ch      ? JSON.parse(ch)       : [],
       moodHistory:     moodH   ? JSON.parse(moodH)    : [],
       sleepHistory:    sleepH  ? JSON.parse(sleepH)   : [],
@@ -311,6 +325,46 @@ export default function ProgressScreen() {
         <Text style={styles.chartNote}>Higher = more correct in 60s</Text>
         <Text style={styles.benchmark}>Benchmark: healthy 55–70 · TBI 30–45</Text>
       </SectionCard>
+
+      {/* Trail Making */}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View>
+            <Text style={styles.cardTitle}>Trail Making</Text>
+            <Text style={styles.cardTag}>Executive Function · TMT</Text>
+          </View>
+          <View style={styles.cardMeta}>
+            <Text style={[styles.cardBest, { color: '#b87eb8' }]}>
+              {stats.trailBestA !== null ? `${stats.trailBestA}s` : '—'}
+            </Text>
+            <Text style={styles.cardBestLabel}>best A</Text>
+          </View>
+        </View>
+        <Text style={[styles.trendText, { color: '#8899aa' }]}>
+          {stats.trailHistoryA.length >= 2
+            ? stats.trailHistoryA[stats.trailHistoryA.length - 1] < stats.trailHistoryA[0]
+              ? '↑ Improving' : '→ Stable'
+            : '–'}
+        </Text>
+        <View style={styles.chartArea}>
+          {stats.trailHistoryA.length > 0 ? (
+            <>
+              <Text style={styles.chartNote}>Part A (seconds — lower is better)</Text>
+              <BarChart data={stats.trailHistoryA} color="#b87eb8" />
+            </>
+          ) : (
+            <Text style={styles.noData}>No Trail Making sessions yet</Text>
+          )}
+          {stats.trailHistoryB.length > 0 && (
+            <>
+              <Text style={[styles.chartNote, { marginTop: 16 }]}>Part B (seconds — lower is better)</Text>
+              <BarChart data={stats.trailHistoryB} color="#d4a0d4" />
+            </>
+          )}
+          <Text style={styles.benchmark}>Benchmark A: healthy 20–40s · TBI 50–90s</Text>
+          <Text style={styles.benchmark}>Benchmark B: healthy 45–90s · TBI 120–180s</Text>
+        </View>
+      </View>
 
       {/* Check-In History */}
       <View style={styles.card}>
