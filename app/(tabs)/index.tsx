@@ -139,6 +139,20 @@ export default function HomeScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0a1628" />
       <ScrollView contentContainerStyle={styles.container}>
 
+        {/* Logo + Settings */}
+        <View style={styles.logoRow}>
+          <View style={styles.logoIcon}>
+            <Text style={styles.logoEmoji}>🧠</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.logoName}>NeuroVet</Text>
+            <Text style={styles.logoTagline}>Brain Training for Veterans</Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsButton}>
+            <Text style={styles.settingsIcon}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
+
         <Text style={styles.greeting}>{greeting()}, {userName}</Text>
         <Text style={styles.date}>{new Date().toLocaleDateString('en-US', {
           weekday: 'long', month: 'long', day: 'numeric',
@@ -257,4 +271,15 @@ const styles = StyleSheet.create({
   checkinScoreLabel: { fontSize: 13, color: '#8899aa', marginLeft: 2 },
   checkinArrow: { fontSize: 20, color: '#8899aa' },
   checkinDueNote: { fontSize: 13, color: '#c8a87e', marginTop: 10 },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 28, width: '100%' },
+  logoIcon: {
+    width: 52, height: 52, borderRadius: 14,
+    backgroundColor: '#1a2e4a', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#7eb8a4',
+  },
+  logoEmoji: { fontSize: 28 },
+  logoName: { fontSize: 22, fontWeight: 'bold', color: '#ffffff' },
+  logoTagline: { fontSize: 12, color: '#7eb8a4', marginTop: 2 },
+  settingsButton: { padding: 8 },
+  settingsIcon: { fontSize: 22 },
 });

@@ -15,7 +15,7 @@ const SYMBOL_MAP: { symbol: string; digit: string }[] = [
   { symbol: '♥', digit: '6' },
 ];
 
-type Phase = 'idle' | 'playing' | 'result';
+type Phase = 'tutorial' | 'idle' | 'playing' | 'result';
 
 function randomPair() {
   return SYMBOL_MAP[Math.floor(Math.random() * SYMBOL_MAP.length)];
@@ -39,10 +39,26 @@ export default function SpeedMatchScreen() {
   const reactionTimesRef = useRef<number[]>([]);
   const pairShownAtRef = useRef<number>(0); // timestamp when current symbol appeared
 
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  const TUTORIAL_STEPS = [
+    { emoji: '🔑', title: 'Learn the key', body: 'A symbol key is shown at the top. Each symbol matches a digit. Take a moment to study it — you can always look back during the game.' },
+    { emoji: '⚡', title: 'Match as fast as you can', body: 'A symbol appears in the center. Tap the matching digit button as quickly as possible.' },
+    { emoji: '⏱️', title: '60 seconds, go!', body: 'You have 60 seconds. The more correct matches, the better your score. Speed and accuracy both matter.' },
+  ];
+
   useEffect(() => {
     AsyncStorage.getItem('speedMatchBest').then(v => v && setBestScore(Number(v)));
     AsyncStorage.getItem('speedMatchHistory').then(v => v && setHistory(JSON.parse(v)));
+    AsyncStorage.getItem('tutorialSpeedMatch').then(seen => {
+      if (!seen) setPhase('tutorial');
+    });
   }, []);
+
+  async function finishTutorial() {
+    await AsyncStorage.setItem('tutorialSpeedMatch', 'done');
+    setPhase('idle');
+  }
 
   function startGame() {
     correctRef.current = 0;
@@ -119,6 +135,33 @@ export default function SpeedMatchScreen() {
     }, 300);
   }
 
+  const currentStep = TUTORIAL_STEPS[tutorialStep];
+
+  if (phase === 'tutorial') {
+    return (
+      <View style={styles.tutorialContainer}>
+        <Text style={styles.tutorialEmoji}>{currentStep.emoji}</Text>
+        <Text style={styles.tutorialTitle}>{currentStep.title}</Text>
+        <Text style={styles.tutorialBody}>{currentStep.body}</Text>
+        <View style={styles.tutorialDots}>
+          {TUTORIAL_STEPS.map((_, i) => (
+            <View key={i} style={[styles.dot, i === tutorialStep && styles.dotActive]} />
+          ))}
+        </View>
+        <TouchableOpacity
+          style={styles.tutorialButton}
+          onPress={() => tutorialStep < TUTORIAL_STEPS.length - 1 ? setTutorialStep(tutorialStep + 1) : finishTutorial()}
+        >
+          <Text style={styles.tutorialButtonText}>
+            {tutorialStep < TUTORIAL_STEPS.length - 1 ? 'Next →' : "Let's Start!"}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={finishTutorial} style={styles.tutorialSkip}>
+          <Text style={styles.tutorialSkipText}>Skip tutorial</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
@@ -313,4 +356,15 @@ const styles = StyleSheet.create({
   bar: { width: 28, backgroundColor: '#8aabcc', borderRadius: 4 },
   startButton: { backgroundColor: '#7eb8a4', paddingVertical: 16, paddingHorizontal: 48, borderRadius: 14 },
   startButtonText: { fontSize: 18, fontWeight: 'bold', color: '#0a1628' },
+  tutorialContainer: { flex: 1, backgroundColor: '#0a1628', alignItems: 'center', justifyContent: 'center', padding: 36 },
+  tutorialEmoji: { fontSize: 72, marginBottom: 24 },
+  tutorialTitle: { fontSize: 26, fontWeight: 'bold', color: '#ffffff', textAlign: 'center', marginBottom: 16 },
+  tutorialBody: { fontSize: 17, color: '#aabbcc', textAlign: 'center', lineHeight: 26, marginBottom: 40 },
+  tutorialDots: { flexDirection: 'row', gap: 8, marginBottom: 40 },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#2a4a6a' },
+  dotActive: { backgroundColor: '#c8a87e' },
+  tutorialButton: { backgroundColor: '#c8a87e', paddingVertical: 16, paddingHorizontal: 48, borderRadius: 14, marginBottom: 16 },
+  tutorialButtonText: { fontSize: 18, fontWeight: 'bold', color: '#0a1628' },
+  tutorialSkip: { padding: 8 },
+  tutorialSkipText: { fontSize: 14, color: '#445566' },
 });

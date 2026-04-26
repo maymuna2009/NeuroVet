@@ -8,7 +8,7 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const TARGET_CHANCE = 0.30; // 30% of letters shown are the target
 const LETTER_INTERVAL_MS = 1500; // new letter every 1.5 seconds
 
-type Phase = 'idle' | 'playing' | 'result';
+type Phase = 'tutorial' | 'idle' | 'playing' | 'result';
 
 function pickTarget(): string {
   return LETTERS[Math.floor(Math.random() * LETTERS.length)];
@@ -41,10 +41,26 @@ export default function FocusFilterScreen() {
   const missesRef = useRef(0);
   const falseAlarmsRef = useRef(0);
 
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  const TUTORIAL_STEPS = [
+    { emoji: '🎯', title: 'Find your target', body: 'A target letter appears at the top of the screen. Remember it — that is the only letter you should tap for.' },
+    { emoji: '⚡', title: 'Tap fast', body: 'Letters flash one at a time. Tap the big TAP button the moment you see your target letter.' },
+    { emoji: '🚫', title: 'Ignore the rest', body: 'If it is not your target letter, do nothing. False taps count against your score. Stay focused for 60 seconds.' },
+  ];
+
   useEffect(() => {
     AsyncStorage.getItem('focusBestAccuracy').then(v => v && setBestAccuracy(Number(v)));
     AsyncStorage.getItem('focusHistory').then(v => v && setHistory(JSON.parse(v)));
+    AsyncStorage.getItem('tutorialFocusFilter').then(seen => {
+      if (!seen) setPhase('tutorial');
+    });
   }, []);
+
+  async function finishTutorial() {
+    await AsyncStorage.setItem('tutorialFocusFilter', 'done');
+    setPhase('idle');
+  }
 
   function startGame() {
     const t = pickTarget();
@@ -124,6 +140,33 @@ export default function FocusFilterScreen() {
   const totalTargets = hits + misses;
   const accuracy = totalTargets > 0 ? Math.round((hits / totalTargets) * 100) : 0;
   const isTarget = currentLetter === target;
+  const currentStep = TUTORIAL_STEPS[tutorialStep];
+
+  if (phase === 'tutorial') {
+    return (
+      <View style={styles.tutorialContainer}>
+        <Text style={styles.tutorialEmoji}>{currentStep.emoji}</Text>
+        <Text style={styles.tutorialTitle}>{currentStep.title}</Text>
+        <Text style={styles.tutorialBody}>{currentStep.body}</Text>
+        <View style={styles.tutorialDots}>
+          {TUTORIAL_STEPS.map((_, i) => (
+            <View key={i} style={[styles.dot, i === tutorialStep && styles.dotActive]} />
+          ))}
+        </View>
+        <TouchableOpacity
+          style={styles.tutorialButton}
+          onPress={() => tutorialStep < TUTORIAL_STEPS.length - 1 ? setTutorialStep(tutorialStep + 1) : finishTutorial()}
+        >
+          <Text style={styles.tutorialButtonText}>
+            {tutorialStep < TUTORIAL_STEPS.length - 1 ? 'Next →' : "Let's Start!"}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={finishTutorial} style={styles.tutorialSkip}>
+          <Text style={styles.tutorialSkipText}>Skip tutorial</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -280,4 +323,15 @@ const styles = StyleSheet.create({
   bar: { width: 28, backgroundColor: '#7eb8a4', borderRadius: 4 },
   startButton: { backgroundColor: '#7eb8a4', paddingVertical: 16, paddingHorizontal: 48, borderRadius: 14 },
   startButtonText: { fontSize: 18, fontWeight: 'bold', color: '#0a1628' },
+  tutorialContainer: { flex: 1, backgroundColor: '#0a1628', alignItems: 'center', justifyContent: 'center', padding: 36 },
+  tutorialEmoji: { fontSize: 72, marginBottom: 24 },
+  tutorialTitle: { fontSize: 26, fontWeight: 'bold', color: '#ffffff', textAlign: 'center', marginBottom: 16 },
+  tutorialBody: { fontSize: 17, color: '#aabbcc', textAlign: 'center', lineHeight: 26, marginBottom: 40 },
+  tutorialDots: { flexDirection: 'row', gap: 8, marginBottom: 40 },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#2a4a6a' },
+  dotActive: { backgroundColor: '#8aabcc' },
+  tutorialButton: { backgroundColor: '#8aabcc', paddingVertical: 16, paddingHorizontal: 48, borderRadius: 14, marginBottom: 16 },
+  tutorialButtonText: { fontSize: 18, fontWeight: 'bold', color: '#0a1628' },
+  tutorialSkip: { padding: 8 },
+  tutorialSkipText: { fontSize: 14, color: '#445566' },
 });
