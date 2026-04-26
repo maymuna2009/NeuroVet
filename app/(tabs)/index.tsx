@@ -43,6 +43,7 @@ const EXERCISES = [
   { route: '/exercises/memory-grid', name: 'Memory Grid', sub: 'Working Memory', icon: 'grid-outline' as const, key: 'memoryGridLast', color: '#7eb8a4', unit: '' },
   { route: '/exercises/focus-filter', name: 'Focus Filter', sub: 'Attention', icon: 'eye-outline' as const, key: 'focusLastAccuracy', color: '#8aabcc', unit: '%' },
   { route: '/exercises/speed-match', name: 'Speed Match', sub: 'Processing Speed', icon: 'flash-outline' as const, key: 'speedMatchLast', color: '#c8a87e', unit: '' },
+  { route: '/exercises/trail-making', name: 'Trail Making', sub: 'Executive Function', icon: 'git-branch-outline' as const, key: 'trailLastA', color: '#b87eb8', unit: 's' },
 ];
 
 export default function HomeScreen() {

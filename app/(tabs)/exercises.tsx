@@ -27,6 +27,14 @@ const EXERCISES = [
     description: 'Match symbols to digits as fast as possible. The cognitive domain most affected by TBI blast injuries.',
     color: '#c8a87e',
   },
+  {
+    route: '/exercises/trail-making',
+    name: 'Trail Making',
+    tag: 'Trail Making Test (TMT)',
+    skill: 'Exec. Function',
+    description: 'Tap numbered (and lettered) targets in sequence as fast as possible. Tests planning and cognitive flexibility.',
+    color: '#b87eb8',
+  },
 ];
 
 export default function ExercisesScreen() {
