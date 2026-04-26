@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useTextSize } from '@/context/TextSizeContext';
 
 function todayString(): string {
@@ -35,6 +36,15 @@ function daysSince(dateStr: string): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 }
 
+const MOOD_EMOJIS = ['😞', '😕', '😐', '🙂', '😄'];
+const SLEEP_EMOJIS = ['😴', '😟', '😐', '😊', '🌟'];
+
+const EXERCISES = [
+  { route: '/exercises/memory-grid', name: 'Memory Grid', sub: 'Working Memory', emoji: '🟦', key: 'memoryGridLast', color: '#7eb8a4' },
+  { route: '/exercises/focus-filter', name: 'Focus Filter', sub: 'Attention', emoji: '🎯', key: 'focusLastAccuracy', color: '#8aabcc' },
+  { route: '/exercises/speed-match', name: 'Speed Match', sub: 'Processing Speed', emoji: '⚡', key: 'speedMatchLast', color: '#c8a87e' },
+];
+
 export default function HomeScreen() {
   const router = useRouter();
   const [userName, setUserName] = useState<string | null>(null);
@@ -45,12 +55,13 @@ export default function HomeScreen() {
   const [lastCheckinDate, setLastCheckinDate] = useState<string | null>(null);
   const [lastCheckinScore, setLastCheckinScore] = useState<number | null>(null);
   const [todayMood, setTodayMood] = useState<number | null>(null);
-  const [badges, setBadges] = useState<{ emoji: string; label: string }[]>([]);
   const [todaySleep, setTodaySleep] = useState<number | null>(null);
   const [lastSleepDate, setLastSleepDate] = useState<string | null>(null);
+  const [lastScores, setLastScores] = useState<Record<string, string>>({});
+  const [showMoodPicker, setShowMoodPicker] = useState(false);
+  const [showSleepPicker, setShowSleepPicker] = useState(false);
 
   useEffect(() => { loadData(); }, []);
-
   useEffect(() => {
     const interval = setInterval(loadData, 2000);
     return () => clearInterval(interval);
@@ -84,56 +95,21 @@ export default function HomeScreen() {
 
     const moodDate = await AsyncStorage.getItem('moodLastDate');
     const moodVal = await AsyncStorage.getItem('moodLastValue');
-    if (moodDate === todayString() && moodVal) setTodayMood(Number(moodVal));
+    if (moodDate === today && moodVal) setTodayMood(Number(moodVal));
     else setTodayMood(null);
 
-    // Sleep
     const sleepDate = await AsyncStorage.getItem('sleepLastDate');
     const sleepVal = await AsyncStorage.getItem('sleepLastValue');
     setLastSleepDate(sleepDate);
-    if (sleepDate === todayString() && sleepVal) setTodaySleep(Number(sleepVal));
+    if (sleepDate === today && sleepVal) setTodaySleep(Number(sleepVal));
     else setTodaySleep(null);
 
-    // Badges — derived from stored data
-    const memBest = await AsyncStorage.getItem('memoryGridBest');
-    const focusBest = await AsyncStorage.getItem('focusBestAccuracy');
-    const speedBest = await AsyncStorage.getItem('speedMatchBest');
-    const checkinHist = await AsyncStorage.getItem('checkinHistory');
-    const earned: { emoji: string; label: string }[] = [];
-
-    const currentStreak = Number(savedStreak) || 0;
-    if (currentStreak >= 7)  earned.push({ emoji: '🔥', label: '7-day streak' });
-    if (currentStreak >= 30) earned.push({ emoji: '⭐', label: '30-day streak' });
-    if (Number(memBest) >= 7)  earned.push({ emoji: '🧠', label: 'Memory span 7+' });
-    if (Number(focusBest) >= 90) earned.push({ emoji: '🎯', label: 'Focus 90%+' });
-    if (Number(speedBest) >= 30) earned.push({ emoji: '⚡', label: 'Speed 30+' });
-    if (checkinHist) {
-      const ch = JSON.parse(checkinHist);
-      if (ch.length >= 1) earned.push({ emoji: '📋', label: 'First check-in' });
-      if (ch.length >= 4) earned.push({ emoji: '🏅', label: '4 check-ins done' });
+    const scores: Record<string, string> = {};
+    for (const ex of EXERCISES) {
+      const v = await AsyncStorage.getItem(ex.key);
+      if (v) scores[ex.key] = v;
     }
-    setBadges(earned);
-  }
-
-  async function saveSleep(value: number) {
-    setTodaySleep(value);
-    setLastSleepDate(todayString());
-    await AsyncStorage.setItem('sleepLastDate', todayString());
-    await AsyncStorage.setItem('sleepLastValue', String(value));
-    const existing = await AsyncStorage.getItem('sleepHistory');
-    const history = existing ? JSON.parse(existing) : [];
-    const updated = [...history, { date: todayString(), sleep: value }].slice(-60);
-    await AsyncStorage.setItem('sleepHistory', JSON.stringify(updated));
-  }
-
-  async function saveMood(value: number) {
-    setTodayMood(value);
-    await AsyncStorage.setItem('moodLastDate', todayString());
-    await AsyncStorage.setItem('moodLastValue', String(value));
-    const existing = await AsyncStorage.getItem('moodHistory');
-    const history = existing ? JSON.parse(existing) : [];
-    const updated = [...history, { date: todayString(), mood: value }].slice(-60);
-    await AsyncStorage.setItem('moodHistory', JSON.stringify(updated));
+    setLastScores(scores);
   }
 
   async function saveName() {
@@ -153,18 +129,38 @@ export default function HomeScreen() {
     router.push('/(tabs)/exercises');
   }
 
+  async function saveMood(value: number) {
+    setTodayMood(value);
+    setShowMoodPicker(false);
+    await AsyncStorage.setItem('moodLastDate', todayString());
+    await AsyncStorage.setItem('moodLastValue', String(value));
+    const existing = await AsyncStorage.getItem('moodHistory');
+    const history = existing ? JSON.parse(existing) : [];
+    await AsyncStorage.setItem('moodHistory', JSON.stringify([...history, { date: todayString(), mood: value }].slice(-60)));
+  }
+
+  async function saveSleep(value: number) {
+    setTodaySleep(value);
+    setShowSleepPicker(false);
+    setLastSleepDate(todayString());
+    await AsyncStorage.setItem('sleepLastDate', todayString());
+    await AsyncStorage.setItem('sleepLastValue', String(value));
+    const existing = await AsyncStorage.getItem('sleepHistory');
+    const history = existing ? JSON.parse(existing) : [];
+    await AsyncStorage.setItem('sleepHistory', JSON.stringify([...history, { date: todayString(), sleep: value }].slice(-60)));
+  }
+
   const checkinDaysAgo = lastCheckinDate ? daysSince(lastCheckinDate) : null;
   const checkinDue = checkinDaysAgo === null || checkinDaysAgo >= 7;
+  const sleepDue = lastSleepDate === null || daysSince(lastSleepDate) >= 7;
 
-  // First launch — ask for name
+  // Onboarding
   if (userName === null) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="light-content" backgroundColor="#0a1628" />
-        <KeyboardAvoidingView
-          style={styles.onboardContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
+        <KeyboardAvoidingView style={styles.onboardContainer} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Text style={styles.onboardEmoji}>🧠</Text>
           <Text style={styles.onboardTitle}>Welcome to NeuroVet</Text>
           <Text style={styles.onboardSub}>Daily brain training for veterans with TBI</Text>
           <Text style={styles.onboardLabel}>What should we call you?</Text>
@@ -178,16 +174,10 @@ export default function HomeScreen() {
             returnKeyType="done"
             onSubmitEditing={saveName}
           />
-          <TouchableOpacity
-            style={[styles.startButton, !nameInput.trim() && styles.startButtonDone]}
-            onPress={saveName}
-            disabled={!nameInput.trim()}
-          >
-            <Text style={styles.startButtonText}>Get Started</Text>
+          <TouchableOpacity style={[styles.primaryButton, !nameInput.trim() && styles.primaryButtonDone]} onPress={saveName} disabled={!nameInput.trim()}>
+            <Text style={[styles.primaryButtonText, !nameInput.trim() && styles.primaryButtonTextDone]}>Get Started</Text>
           </TouchableOpacity>
-          <Text style={styles.onboardDisclaimer}>
-            Your data stays on your device. Nothing is uploaded.
-          </Text>
+          <Text style={styles.onboardDisclaimer}>Your data stays on your device. Nothing is uploaded.</Text>
         </KeyboardAvoidingView>
       </SafeAreaView>
     );
@@ -198,163 +188,133 @@ export default function HomeScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0a1628" />
       <ScrollView contentContainerStyle={styles.container}>
 
-        {/* Logo + Settings */}
-        <View style={styles.logoRow}>
-          <View style={styles.logoIcon}>
-            <Text style={styles.logoEmoji}>🧠</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.logoName}>NeuroVet</Text>
-            <Text style={styles.logoTagline}>Brain Training for Veterans</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.logoIcon}>
+              <Text style={styles.logoEmoji}>🧠</Text>
+            </View>
+            <View>
+              <Text style={[styles.greeting, { fontSize: fs(17) }]}>{greeting()}, {userName}</Text>
+              <Text style={[styles.date, { fontSize: fs(12) }]}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
+            </View>
           </View>
           <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsButton}>
-            <Text style={styles.settingsIcon}>⚙️</Text>
+            <Ionicons name="settings-outline" size={22} color="#8899aa" />
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.greeting, { fontSize: fs(26) }]}>{greeting()}, {userName}</Text>
-        <Text style={[styles.date, { fontSize: fs(15) }]}>{new Date().toLocaleDateString('en-US', {
-          weekday: 'long', month: 'long', day: 'numeric',
-        })}</Text>
-
-        {/* Streak card */}
-        <View style={styles.streakCard}>
-          <Text style={[styles.streakNumber, { fontSize: fs(72) }]}>{streak}</Text>
-          <Text style={[styles.streakLabel, { fontSize: fs(18) }]}>Day Streak</Text>
-          {streak >= 7  && <Text style={[styles.badge, { fontSize: fs(13) }]}>🔥 One week strong</Text>}
-          {streak >= 30 && <Text style={[styles.badge, { fontSize: fs(13) }]}>⭐ 30-day milestone</Text>}
+        {/* Hero card */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroLeft}>
+            <Text style={[styles.streakNumber, { fontSize: fs(60) }]}>{streak}</Text>
+            <Text style={[styles.streakLabel, { fontSize: fs(13) }]}>Day Streak</Text>
+            {streak >= 7 && <Text style={styles.heroBadge}>🔥 {streak} days strong</Text>}
+          </View>
+          <View style={styles.heroDivider} />
+          <View style={styles.heroRight}>
+            <View style={[styles.statusPill, completedToday ? styles.statusPillDone : styles.statusPillPending]}>
+              <Text style={[styles.statusPillText, { fontSize: fs(13) }]}>
+                {completedToday ? '✓  Done today' : '○  Not done yet'}
+              </Text>
+            </View>
+            <Text style={styles.heroSub}>
+              {completedToday ? 'Great work!' : 'Start when ready'}
+            </Text>
+          </View>
         </View>
 
-        {/* Exercise status */}
-        <View style={[styles.statusCard, completedToday ? styles.statusDone : styles.statusPending]}>
-          <Text style={[styles.statusText, { fontSize: fs(15) }]}>
-            {completedToday ? '✓ Exercises done today' : 'Exercises not done yet today'}
-          </Text>
-        </View>
-
-        {/* Start button — navigates to Exercises tab */}
+        {/* Primary CTA */}
         <TouchableOpacity
-          style={[styles.startButton, completedToday && styles.startButtonDone]}
+          style={[styles.primaryButton, completedToday && styles.primaryButtonDone]}
           onPress={markDoneToday}
           disabled={completedToday}
         >
-          <Text style={styles.startButtonText}>
-            {completedToday ? 'Come back tomorrow' : "Start Today's Exercises"}
+          <Text style={[styles.primaryButtonText, completedToday && styles.primaryButtonTextDone, { fontSize: fs(16) }]}>
+            {completedToday ? '✓  Exercises complete for today' : "▶  Start Today's Exercises"}
           </Text>
         </TouchableOpacity>
 
-        {/* Weekly Check-In card */}
-        <TouchableOpacity
-          style={[styles.checkinCard, checkinDue && styles.checkinCardDue]}
-          onPress={() => router.push('/checkin')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.checkinLeft}>
-            <Text style={styles.checkinTitle}>Weekly Check-In</Text>
-            <Text style={styles.checkinSub}>
-              {checkinDaysAgo === null ? 'Never completed — tap to start'
-                : checkinDaysAgo === 0 ? 'Completed today'
-                : checkinDaysAgo === 1 ? 'Completed yesterday'
-                : `${checkinDaysAgo} days ago`}
+        {/* Exercise cards */}
+        <Text style={styles.sectionLabel}>EXERCISES</Text>
+        {EXERCISES.map(ex => (
+          <TouchableOpacity
+            key={ex.route}
+            style={styles.exerciseCard}
+            onPress={() => router.push(ex.route as any)}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.exerciseAccent, { backgroundColor: ex.color + '33' }]}>
+              <Text style={styles.exerciseEmoji}>{ex.emoji}</Text>
+            </View>
+            <View style={styles.exerciseInfo}>
+              <Text style={[styles.exerciseName, { fontSize: fs(15) }]}>{ex.name}</Text>
+              <Text style={styles.exerciseSub}>{ex.sub}</Text>
+            </View>
+            <View style={styles.exerciseScore}>
+              <Text style={[styles.exerciseScoreVal, { color: ex.color }]}>
+                {lastScores[ex.key] ?? '—'}
+              </Text>
+              <Text style={styles.exerciseScoreLabel}>last</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#445566" />
+          </TouchableOpacity>
+        ))}
+
+        {/* Data tiles */}
+        <Text style={styles.sectionLabel}>TODAY</Text>
+        <View style={styles.tilesRow}>
+          <TouchableOpacity style={[styles.tile, checkinDue && styles.tileDue]} onPress={() => router.push('/checkin')}>
+            <Text style={styles.tileIcon}>📋</Text>
+            <Text style={[styles.tileValue, lastCheckinScore !== null ? { color: checkinZoneColor(lastCheckinScore) } : {}]}>
+              {lastCheckinScore !== null ? `${lastCheckinScore}` : '—'}
             </Text>
-          </View>
-          <View style={styles.checkinRight}>
-            {lastCheckinScore !== null ? (
-              <>
-                <Text style={[styles.checkinScore, { color: checkinZoneColor(lastCheckinScore) }]}>
-                  {lastCheckinScore}
-                </Text>
-                <Text style={styles.checkinScoreLabel}>/40</Text>
-              </>
-            ) : (
-              <Text style={styles.checkinArrow}>→</Text>
-            )}
-          </View>
-        </TouchableOpacity>
+            <Text style={styles.tileLabel}>Check-In</Text>
+            {checkinDue && <View style={styles.tileDot} />}
+          </TouchableOpacity>
 
-        {checkinDue && (
-          <Text style={styles.checkinDueNote}>
-            {checkinDaysAgo === null ? 'Start tracking your symptoms' : 'Your weekly check-in is due'}
-          </Text>
-        )}
+          <TouchableOpacity style={styles.tile} onPress={() => todayMood === null && setShowMoodPicker(!showMoodPicker)}>
+            <Text style={styles.tileIcon}>{todayMood !== null ? MOOD_EMOJIS[todayMood - 1] : '😐'}</Text>
+            <Text style={styles.tileValue}>{todayMood ?? '—'}</Text>
+            <Text style={styles.tileLabel}>Mood</Text>
+            {todayMood === null && <View style={styles.tileDot} />}
+          </TouchableOpacity>
 
-        {/* Achievement Badges */}
-        {badges.length > 0 && (
-          <View style={styles.badgesCard}>
-            <Text style={styles.badgesTitle}>Achievements</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.badgesScroll}>
-              {badges.map((b, i) => (
-                <View key={i} style={styles.achievementItem}>
-                  <Text style={styles.achievementEmoji}>{b.emoji}</Text>
-                  <Text style={styles.achievementLabel}>{b.label}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+          <TouchableOpacity style={styles.tile} onPress={() => sleepDue && setShowSleepPicker(!showSleepPicker)}>
+            <Text style={styles.tileIcon}>{todaySleep !== null ? SLEEP_EMOJIS[todaySleep - 1] : '💤'}</Text>
+            <Text style={styles.tileValue}>{todaySleep ?? '—'}</Text>
+            <Text style={styles.tileLabel}>Sleep</Text>
+            {sleepDue && <View style={styles.tileDot} />}
+          </TouchableOpacity>
+        </View>
 
-        {/* Daily Mood Check-In */}
-        <View style={styles.moodCard}>
-          <Text style={styles.moodTitle}>How are you feeling today?</Text>
-          {todayMood === null ? (
-            <View style={styles.moodRow}>
-              {[
-                { value: 1, emoji: '😞' },
-                { value: 2, emoji: '😕' },
-                { value: 3, emoji: '😐' },
-                { value: 4, emoji: '🙂' },
-                { value: 5, emoji: '😄' },
-              ].map(opt => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={styles.moodButton}
-                  onPress={() => saveMood(opt.value)}
-                >
-                  <Text style={styles.moodEmoji}>{opt.emoji}</Text>
+        {/* Inline pickers */}
+        {showMoodPicker && (
+          <View style={styles.pickerCard}>
+            <Text style={styles.pickerTitle}>How are you feeling today?</Text>
+            <View style={styles.pickerRow}>
+              {MOOD_EMOJIS.map((emoji, i) => (
+                <TouchableOpacity key={i} style={styles.pickerButton} onPress={() => saveMood(i + 1)}>
+                  <Text style={styles.pickerEmoji}>{emoji}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-          ) : (
-            <View style={styles.moodDoneRow}>
-              <Text style={styles.moodDoneEmoji}>
-                {['😞','😕','😐','🙂','😄'][todayMood - 1]}
-              </Text>
-              <Text style={styles.moodDoneText}>Logged for today</Text>
-            </View>
-          )}
-        </View>
+          </View>
+        )}
 
-        {/* Weekly Sleep Quality */}
-        <View style={styles.moodCard}>
-          <Text style={styles.moodTitle}>How was your sleep this week?</Text>
-          {lastSleepDate !== null && daysSince(lastSleepDate) < 7 && todaySleep !== null ? (
-            <View style={styles.moodDoneRow}>
-              <Text style={styles.moodDoneEmoji}>
-                {['😴','😟','😐','😊','🌟'][todaySleep - 1]}
-              </Text>
-              <Text style={styles.moodDoneText}>Logged this week</Text>
-            </View>
-          ) : (
-            <View style={styles.moodRow}>
-              {[
-                { value: 1, emoji: '😴' },
-                { value: 2, emoji: '😟' },
-                { value: 3, emoji: '😐' },
-                { value: 4, emoji: '😊' },
-                { value: 5, emoji: '🌟' },
-              ].map(opt => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={styles.moodButton}
-                  onPress={() => saveSleep(opt.value)}
-                >
-                  <Text style={styles.moodEmoji}>{opt.emoji}</Text>
+        {showSleepPicker && (
+          <View style={styles.pickerCard}>
+            <Text style={styles.pickerTitle}>How has your sleep been this week?</Text>
+            <View style={styles.pickerRow}>
+              {SLEEP_EMOJIS.map((emoji, i) => (
+                <TouchableOpacity key={i} style={styles.pickerButton} onPress={() => saveSleep(i + 1)}>
+                  <Text style={styles.pickerEmoji}>{emoji}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-          )}
-          <Text style={styles.sleepHint}>1 = very poor · 5 = excellent</Text>
-        </View>
+            <Text style={styles.pickerHint}>1 = very poor · 5 = excellent</Text>
+          </View>
+        )}
 
       </ScrollView>
     </SafeAreaView>
@@ -363,82 +323,74 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#0a1628' },
-  container: { alignItems: 'center', padding: 24, paddingTop: 32, paddingBottom: 40 },
+  container: { padding: 20, paddingTop: 12, paddingBottom: 48 },
+
+  // Onboarding
   onboardContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  onboardTitle: { fontSize: 32, fontWeight: 'bold', color: '#ffffff', textAlign: 'center' },
-  onboardSub: { fontSize: 16, color: '#7eb8a4', marginTop: 10, marginBottom: 48, textAlign: 'center' },
-  onboardLabel: { fontSize: 16, color: '#aabbcc', marginBottom: 16, alignSelf: 'flex-start' },
-  nameInput: {
-    width: '100%', backgroundColor: '#1a2e4a', borderRadius: 12,
-    padding: 16, fontSize: 18, color: '#ffffff',
-    borderWidth: 1, borderColor: '#2a4a6a', marginBottom: 20,
-  },
+  onboardEmoji: { fontSize: 56, marginBottom: 16 },
+  onboardTitle: { fontSize: 30, fontWeight: 'bold', color: '#ffffff', textAlign: 'center' },
+  onboardSub: { fontSize: 15, color: '#7eb8a4', marginTop: 8, marginBottom: 40, textAlign: 'center', lineHeight: 22 },
+  onboardLabel: { fontSize: 15, color: '#aabbcc', marginBottom: 12, alignSelf: 'flex-start' },
+  nameInput: { width: '100%', backgroundColor: '#1a2e4a', borderRadius: 12, padding: 16, fontSize: 17, color: '#ffffff', borderWidth: 1, borderColor: '#2a4a6a', marginBottom: 20 },
   onboardDisclaimer: { fontSize: 12, color: '#445566', marginTop: 16, textAlign: 'center' },
-  greeting: { fontSize: 26, fontWeight: 'bold', color: '#ffffff', alignSelf: 'flex-start' },
-  date: { fontSize: 15, color: '#7eb8a4', marginTop: 6, marginBottom: 32, alignSelf: 'flex-start' },
-  streakCard: {
-    backgroundColor: '#1a2e4a', borderRadius: 20, padding: 36,
-    alignItems: 'center', marginBottom: 20, width: '75%',
-    borderWidth: 1, borderColor: '#2a4a6a',
-  },
-  streakNumber: { fontSize: 72, fontWeight: 'bold', color: '#7eb8a4' },
-  streakLabel: { fontSize: 18, color: '#8899aa', marginTop: 6 },
-  badge: { fontSize: 13, color: '#7eb8a4', marginTop: 10 },
-  statusCard: { borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24, marginBottom: 20 },
-  statusDone: { backgroundColor: '#1a3a2a' },
-  statusPending: { backgroundColor: '#2a1a1a' },
-  statusText: { fontSize: 15, color: '#ccddcc', fontWeight: '600' },
-  startButton: {
-    backgroundColor: '#7eb8a4', paddingVertical: 18,
-    paddingHorizontal: 40, borderRadius: 14, marginBottom: 32, width: '100%', alignItems: 'center',
-  },
-  startButtonDone: { backgroundColor: '#2a4a3a' },
-  startButtonText: { fontSize: 18, fontWeight: 'bold', color: '#0a1628' },
-  checkinCard: {
-    width: '100%', backgroundColor: '#1a2e4a', borderRadius: 16,
-    padding: 18, flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', borderWidth: 1, borderColor: '#2a4a6a',
-  },
-  checkinCardDue: { borderColor: '#c8a87e' },
-  checkinLeft: { flex: 1 },
-  checkinTitle: { fontSize: 16, fontWeight: 'bold', color: '#ffffff' },
-  checkinSub: { fontSize: 13, color: '#8899aa', marginTop: 4 },
-  checkinRight: { flexDirection: 'row', alignItems: 'baseline', marginLeft: 16 },
-  checkinScore: { fontSize: 28, fontWeight: 'bold' },
-  checkinScoreLabel: { fontSize: 13, color: '#8899aa', marginLeft: 2 },
-  checkinArrow: { fontSize: 20, color: '#8899aa' },
-  checkinDueNote: { fontSize: 13, color: '#c8a87e', marginTop: 10 },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 28, width: '100%' },
-  logoIcon: {
-    width: 52, height: 52, borderRadius: 14,
-    backgroundColor: '#1a2e4a', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#7eb8a4',
-  },
-  logoEmoji: { fontSize: 28 },
-  logoName: { fontSize: 22, fontWeight: 'bold', color: '#ffffff' },
-  logoTagline: { fontSize: 12, color: '#7eb8a4', marginTop: 2 },
-  settingsButton: { padding: 8 },
-  settingsIcon: { fontSize: 22 },
-  moodCard: {
-    width: '100%', backgroundColor: '#1a2e4a', borderRadius: 16,
-    padding: 18, marginTop: 16, borderWidth: 1, borderColor: '#2a4a6a',
-    alignItems: 'center',
-  },
-  moodTitle: { fontSize: 15, color: '#aabbcc', fontWeight: '600', marginBottom: 14 },
-  moodRow: { flexDirection: 'row', gap: 12 },
-  moodButton: { padding: 8 },
-  moodEmoji: { fontSize: 36 },
-  moodDoneRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  moodDoneEmoji: { fontSize: 36 },
-  moodDoneText: { fontSize: 14, color: '#7eb8a4', fontWeight: '600' },
-  sleepHint: { fontSize: 11, color: '#445566', marginTop: 10 },
-  badgesCard: {
-    width: '100%', backgroundColor: '#1a2e4a', borderRadius: 16,
-    padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#2a4a6a',
-  },
-  badgesTitle: { fontSize: 13, color: '#8899aa', fontWeight: '700', marginBottom: 12, letterSpacing: 1 },
-  badgesScroll: { flexDirection: 'row' },
-  achievementItem: { alignItems: 'center', marginRight: 16, minWidth: 60 },
-  achievementEmoji: { fontSize: 28 },
-  achievementLabel: { fontSize: 11, color: '#7eb8a4', marginTop: 4, textAlign: 'center' },
+
+  // Header
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  logoIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#1a2e4a', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2a4a6a' },
+  logoEmoji: { fontSize: 22 },
+  greeting: { fontSize: 17, fontWeight: 'bold', color: '#ffffff' },
+  date: { fontSize: 12, color: '#8899aa', marginTop: 1 },
+  settingsButton: { padding: 6 },
+
+  // Hero card
+  heroCard: { backgroundColor: '#1a2e4a', borderRadius: 20, padding: 22, flexDirection: 'row', alignItems: 'center', marginBottom: 14, borderWidth: 1, borderColor: '#2a4a6a' },
+  heroLeft: { alignItems: 'center', flex: 1 },
+  streakNumber: { fontSize: 60, fontWeight: 'bold', color: '#7eb8a4', lineHeight: 66 },
+  streakLabel: { fontSize: 13, color: '#8899aa', marginTop: 2 },
+  heroBadge: { fontSize: 11, color: '#c8a87e', marginTop: 6 },
+  heroDivider: { width: 1, height: 64, backgroundColor: '#2a4a6a', marginHorizontal: 18 },
+  heroRight: { flex: 1, alignItems: 'center', gap: 8 },
+  statusPill: { borderRadius: 20, paddingVertical: 8, paddingHorizontal: 14 },
+  statusPillDone: { backgroundColor: '#1a3a2a' },
+  statusPillPending: { backgroundColor: '#2a2a1a' },
+  statusPillText: { fontSize: 13, fontWeight: '600', color: '#ccddcc' },
+  heroSub: { fontSize: 12, color: '#8899aa' },
+
+  // Primary button
+  primaryButton: { backgroundColor: '#7eb8a4', paddingVertical: 15, borderRadius: 14, alignItems: 'center', marginBottom: 24 },
+  primaryButtonDone: { backgroundColor: '#1a2e4a' },
+  primaryButtonText: { fontSize: 16, fontWeight: 'bold', color: '#0a1628' },
+  primaryButtonTextDone: { color: '#7eb8a4' },
+
+  // Section label
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: '#445566', letterSpacing: 1.2, marginBottom: 10 },
+
+  // Exercise cards
+  exerciseCard: { backgroundColor: '#1a2e4a', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 8, borderWidth: 1, borderColor: '#2a4a6a' },
+  exerciseAccent: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  exerciseEmoji: { fontSize: 20 },
+  exerciseInfo: { flex: 1 },
+  exerciseName: { fontSize: 15, fontWeight: '600', color: '#ffffff' },
+  exerciseSub: { fontSize: 12, color: '#8899aa', marginTop: 2 },
+  exerciseScore: { alignItems: 'center', marginRight: 10 },
+  exerciseScoreVal: { fontSize: 18, fontWeight: 'bold' },
+  exerciseScoreLabel: { fontSize: 10, color: '#445566', marginTop: 1 },
+
+  // Tiles
+  tilesRow: { flexDirection: 'row', gap: 10, marginBottom: 4 },
+  tile: { flex: 1, backgroundColor: '#1a2e4a', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: '#2a4a6a', position: 'relative' },
+  tileDue: { borderColor: '#c8a87e' },
+  tileIcon: { fontSize: 22, marginBottom: 4 },
+  tileValue: { fontSize: 16, fontWeight: 'bold', color: '#ffffff' },
+  tileLabel: { fontSize: 11, color: '#8899aa', marginTop: 3 },
+  tileDot: { position: 'absolute', top: 8, right: 8, width: 6, height: 6, borderRadius: 3, backgroundColor: '#c8a87e' },
+
+  // Pickers
+  pickerCard: { backgroundColor: '#1a2e4a', borderRadius: 16, padding: 18, marginTop: 10, borderWidth: 1, borderColor: '#2a4a6a', alignItems: 'center' },
+  pickerTitle: { fontSize: 14, color: '#aabbcc', marginBottom: 16, textAlign: 'center' },
+  pickerRow: { flexDirection: 'row', gap: 12 },
+  pickerButton: { padding: 6 },
+  pickerEmoji: { fontSize: 34 },
+  pickerHint: { fontSize: 11, color: '#445566', marginTop: 12 },
 });
