@@ -430,8 +430,8 @@ export default function ProgressScreen() {
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View>
-            <Text style={styles.cardTitle}>Daily Mood</Text>
-            <Text style={styles.cardTag}>Self-reported · 1 (low) to 5 (great)</Text>
+            <Text style={styles.cardTitle}>Mood</Text>
+            <Text style={styles.cardTag}>Daily self-report · 1 (low) to 5 (great)</Text>
           </View>
         </View>
         {stats.moodHistory.length > 0 ? (
@@ -452,8 +452,8 @@ export default function ProgressScreen() {
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View>
-            <Text style={styles.cardTitle}>Sleep Quality</Text>
-            <Text style={styles.cardTag}>Weekly self-report · 1 (poor) to 5 (excellent)</Text>
+            <Text style={styles.cardTitle}>Sleep</Text>
+            <Text style={styles.cardTag}>Daily self-report · 1 (poor) to 5 (excellent)</Text>
           </View>
         </View>
         {stats.sleepHistory && stats.sleepHistory.length > 0 ? (
@@ -470,7 +470,7 @@ export default function ProgressScreen() {
             })}
           </View>
         ) : (
-          <Text style={styles.noData}>No sleep logs yet — log weekly from the Home tab</Text>
+          <Text style={styles.noData}>No sleep logs yet — log daily from the Home tab</Text>
         )}
       </View>
 

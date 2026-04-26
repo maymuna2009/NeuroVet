@@ -35,6 +35,30 @@ const EXERCISES = [
     description: 'Tap numbered (and lettered) targets in sequence as fast as possible. Tests planning and cognitive flexibility.',
     color: '#b87eb8',
   },
+  {
+    route: '/exercises/go-no-go',
+    name: 'Go / No-Go',
+    tag: 'Go/No-Go Task',
+    skill: 'Inhibition',
+    description: 'Tap for every letter — but stop yourself when you see X. Tests impulse control, often impaired after TBI.',
+    color: '#a87eb8',
+  },
+  {
+    route: '/exercises/digit-span',
+    name: 'Digit Span',
+    tag: 'Wechsler Memory Scale',
+    skill: 'Verbal Memory',
+    description: 'Watch digits appear one by one, then repeat them forward or backward. Tests verbal working memory.',
+    color: '#78b8a0',
+  },
+  {
+    route: '/exercises/prospective-memory',
+    name: 'Prospective Memory',
+    tag: 'Future Intention Memory',
+    skill: 'Planning',
+    description: 'Remember to tap when a specific target appears among distractors. Tests the ability to remember future intentions.',
+    color: '#7eb8c8',
+  },
 ];
 
 export default function ExercisesScreen() {

@@ -57,7 +57,6 @@ export default function HomeScreen() {
   const [lastCheckinScore, setLastCheckinScore] = useState<number | null>(null);
   const [todayMood, setTodayMood] = useState<number | null>(null);
   const [todaySleep, setTodaySleep] = useState<number | null>(null);
-  const [lastSleepDate, setLastSleepDate] = useState<string | null>(null);
   const [lastScores, setLastScores] = useState<Record<string, string>>({});
   const [showMoodPicker, setShowMoodPicker] = useState(false);
   const [showSleepPicker, setShowSleepPicker] = useState(false);
@@ -101,7 +100,6 @@ export default function HomeScreen() {
 
     const sleepDate = await AsyncStorage.getItem('sleepLastDate');
     const sleepVal = await AsyncStorage.getItem('sleepLastValue');
-    setLastSleepDate(sleepDate);
     if (sleepDate === today && sleepVal) setTodaySleep(Number(sleepVal));
     else setTodaySleep(null);
 
@@ -143,7 +141,6 @@ export default function HomeScreen() {
   async function saveSleep(value: number) {
     setTodaySleep(value);
     setShowSleepPicker(false);
-    setLastSleepDate(todayString());
     await AsyncStorage.setItem('sleepLastDate', todayString());
     await AsyncStorage.setItem('sleepLastValue', String(value));
     const existing = await AsyncStorage.getItem('sleepHistory');
@@ -153,7 +150,7 @@ export default function HomeScreen() {
 
   const checkinDaysAgo = lastCheckinDate ? daysSince(lastCheckinDate) : null;
   const checkinDue = checkinDaysAgo === null || checkinDaysAgo >= 7;
-  const sleepDue = lastSleepDate === null || daysSince(lastSleepDate) >= 7;
+  const sleepDue = todaySleep === null;
 
   // Onboarding
   if (userName === null) {
@@ -309,7 +306,7 @@ export default function HomeScreen() {
 
         {showSleepPicker && (
           <View style={styles.pickerCard}>
-            <Text style={styles.pickerTitle}>How has your sleep been this week?</Text>
+            <Text style={styles.pickerTitle}>How did you sleep last night?</Text>
             <View style={styles.pickerRow}>
               {SLEEP_EMOJIS.map((emoji, i) => (
                 <TouchableOpacity key={i} style={styles.pickerButton} onPress={() => saveSleep(i + 1)}>
@@ -321,13 +318,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Built for those who served. Every session matters.
-          </Text>
-          <Text style={styles.footerSub}>NeuroVet · Made for veterans, with care</Text>
-        </View>
+        <Text style={styles.footerLine}>Built for those who served. Every session matters.</Text>
 
       </ScrollView>
     </SafeAreaView>
@@ -357,7 +348,7 @@ const styles = StyleSheet.create({
   settingsButton: { padding: 6 },
 
   // Hero card
-  heroCard: { backgroundColor: '#1a2e4a', borderRadius: 20, paddingVertical: 20, paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: '#2a4a6a' },
+  heroCard: { backgroundColor: '#1a2e4a', borderRadius: 20, paddingVertical: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#2a4a6a' },
   heroLeft: { alignItems: 'center', flex: 1 },
   streakNumber: { fontSize: 60, fontWeight: 'bold', color: '#7eb8a4', lineHeight: 64 },
   streakLabel: { fontSize: 13, color: '#8899aa', marginTop: 2 },
@@ -371,18 +362,18 @@ const styles = StyleSheet.create({
   heroSub: { fontSize: 12, color: '#8899aa' },
 
   // Primary button
-  primaryButton: { backgroundColor: '#7eb8a4', paddingVertical: 13, borderRadius: 14, alignItems: 'center', marginBottom: 16 },
+  primaryButton: { backgroundColor: '#7eb8a4', paddingVertical: 11, borderRadius: 14, alignItems: 'center', marginBottom: 12 },
   primaryButtonDone: { backgroundColor: '#1a2e4a' },
   primaryButtonText: { fontSize: 16, fontWeight: 'bold', color: '#0a1628' },
   primaryButtonTextDone: { color: '#7eb8a4' },
 
   // Section label
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: '#445566', letterSpacing: 1.2, marginBottom: 10 },
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: '#445566', letterSpacing: 1.2, marginBottom: 6, marginTop: 4 },
 
   // Exercise cards
-  exerciseCard: { backgroundColor: '#1a2e4a', borderRadius: 14, padding: 11, flexDirection: 'row', alignItems: 'center', marginBottom: 7, borderWidth: 1, borderColor: '#2a4a6a', borderLeftWidth: 3 },
-  exerciseAccent: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  exerciseIconBox: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  exerciseCard: { backgroundColor: '#1a2e4a', borderRadius: 12, padding: 9, flexDirection: 'row', alignItems: 'center', marginBottom: 5, borderWidth: 1, borderColor: '#2a4a6a', borderLeftWidth: 3 },
+  exerciseAccent: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  exerciseIconBox: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   exerciseInfo: { flex: 1 },
   exerciseName: { fontSize: 15, fontWeight: '600', color: '#ffffff' },
   exerciseSub: { fontSize: 12, color: '#8899aa', marginTop: 2 },
@@ -409,4 +400,5 @@ const styles = StyleSheet.create({
   footer: { marginTop: 20, alignItems: 'center', paddingBottom: 8 },
   footerText: { fontSize: 14, color: '#445566', textAlign: 'center', lineHeight: 20, fontStyle: 'italic' },
   footerSub: { fontSize: 11, color: '#2a4a6a', marginTop: 6 },
+  footerLine: { fontSize: 12, color: '#2a4a6a', textAlign: 'center', marginTop: 16, fontStyle: 'italic' },
 });
