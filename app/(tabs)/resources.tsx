@@ -160,30 +160,23 @@ export default function ResourcesScreen() {
         {aboutExpanded && (
           <View style={styles.aboutBody}>
             <Text style={styles.aboutText}>
-              NeuroVet was built to address a documented gap: the VA offers seven mobile apps for
-              veterans with TBI, but none target cognitive rehabilitation — memory, attention, or
-              processing speed.
+              Veterans have given so much. They deserve every tool available to support their
+              recovery and wellbeing. NeuroVet was built out of deep respect and gratitude for
+              their service.
             </Text>
             <Text style={styles.aboutText}>
-              The three exercises are adapted from clinically validated neuropsychological tests
-              used in VA TBI assessments: the Corsi Block Test (working memory), the Continuous
-              Performance Test (sustained attention), and the Symbol Digit Modalities Test
-              (processing speed).
+              After spending 120+ hours volunteering at the Portland VA Medical Center, I saw
+              firsthand how TBI affects veterans' daily lives — their memory, focus, and
+              confidence. I wanted to do something meaningful to help.
             </Text>
             <Text style={styles.aboutText}>
-              The weekly symptom check-in is adapted from the Cognitive Failures Questionnaire
-              (CFQ), used in published TBI research with veteran populations.
+              NeuroVet gives veterans a simple, private way to strengthen their cognitive health
+              every day — no appointments, no waitlists, no cost. Just 5 minutes a day.
             </Text>
+            <Text style={styles.aboutSubhead}>A message to every veteran using this app</Text>
             <Text style={styles.aboutText}>
-              The mobile rehabilitation approach is grounded in the CALM trial (PMC 2019), which
-              demonstrated that VA-validated cognitive rehab protocols are effective when delivered
-              via smartphone.
-            </Text>
-            <Text style={styles.aboutSubhead}>Built by</Text>
-            <Text style={styles.aboutText}>
-              Maymuna Kabir, 11th grade, Westview High School, Portland, Oregon. 120+
-              volunteer hours at the Portland VA Medical Center. Built for the 2026 Congressional
-              App Challenge, Oregon's 1st District.
+              Thank you for your service. This app was built for you, with you in mind,
+              every step of the way.
             </Text>
             <Text style={styles.aboutDisclaimer}>
               NeuroVet is a self-training and monitoring tool. It is not a medical device and does
