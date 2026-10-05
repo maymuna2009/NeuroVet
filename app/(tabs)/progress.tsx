@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, Share } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -155,29 +155,20 @@ export default function ProgressScreen() {
       `  Current streak: ${streak} days`,
       ``,
       `Note: No personal identifying information included.`,
-      `Shared voluntarily for research purposes.`,
     ].join('\n');
   }
 
-  async function sendViaText() {
+  async function shareData() {
     const text = buildExportText();
     if (!text) { Alert.alert('No data yet', 'Complete some exercises first.'); return; }
-    const encoded = encodeURIComponent(text);
-    const url = `sms:REDACTED&body=${encoded}`;
-    const supported = await Linking.canOpenURL(url);
-    if (supported) { await Linking.openURL(url); }
-    else { Alert.alert('Cannot open Messages', 'Please send manually.'); }
-  }
-
-  async function sendViaEmail() {
-    const text = buildExportText();
-    if (!text) { Alert.alert('No data yet', 'Complete some exercises first.'); return; }
-    const subject = encodeURIComponent(`NeuroVet Data — ${new Date().toLocaleDateString()}`);
-    const body = encodeURIComponent(text);
-    const url = `mailto:redacted@example.com?subject=${subject}&body=${body}`;
-    const supported = await Linking.canOpenURL(url);
-    if (supported) { await Linking.openURL(url); }
-    else { Alert.alert('Cannot open Mail', 'Please send manually.'); }
+    try {
+      await Share.share({
+        title: `NeuroVet Data \u2014 ${new Date().toLocaleDateString()}`,
+        message: text,
+      });
+    } catch {
+      Alert.alert('Could not share', 'Please try again.');
+    }
   }
 
   async function sendToCaregiver() {
@@ -476,11 +467,8 @@ export default function ProgressScreen() {
 
       {/* Export buttons */}
       <View style={styles.exportRow}>
-        <TouchableOpacity style={styles.exportButton} onPress={sendViaText}>
-          <Text style={styles.exportButtonText}>📱 Send via Text</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.exportButton, styles.exportButtonEmail]} onPress={sendViaEmail}>
-          <Text style={styles.exportButtonText}>✉️ Send via Email</Text>
+        <TouchableOpacity style={[styles.exportButton, styles.exportButtonWide]} onPress={shareData}>
+          <Text style={styles.exportButtonText}>📤 Share My Data</Text>
         </TouchableOpacity>
       </View>
       <TouchableOpacity style={styles.caregiverButton} onPress={sendToCaregiver}>
@@ -534,6 +522,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', borderWidth: 1, borderColor: '#7eb8a4',
   },
   exportButtonEmail: { borderColor: '#8aabcc' },
+  exportButtonWide: { flex: 1 },
   exportButtonText: { fontSize: 14, fontWeight: '600', color: '#7eb8a4' },
   exportNote: { fontSize: 12, color: '#445566', lineHeight: 18 },
   exportNoteTop: { fontSize: 12, color: '#445566', lineHeight: 18, textAlign: 'center', marginTop: 10 },

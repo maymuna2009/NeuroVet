@@ -165,9 +165,10 @@ export default function ResourcesScreen() {
               their service.
             </Text>
             <Text style={styles.aboutText}>
-              After spending 120+ hours volunteering at the Portland VA Medical Center, I saw
-              firsthand how TBI affects veterans' daily lives — their memory, focus, and
-              confidence. I wanted to do something meaningful to help.
+              NeuroVet was designed and built by Maymuna Kabir, a high school student in
+              Portland, Oregon. After nearly 130 hours volunteering at the Portland VA Medical
+              Center, she saw firsthand how TBI affects veterans' daily lives, their memory,
+              focus, and confidence, and built this app in response.
             </Text>
             <Text style={styles.aboutText}>
               NeuroVet gives veterans a simple, private way to strengthen their cognitive health
